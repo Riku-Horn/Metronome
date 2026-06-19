@@ -5,9 +5,9 @@ import { parseSongJson } from '../utils/songParser';
 const parsed = parseSongJson(JSON.stringify(tsukumogamiJson));
 
 export const sampleSong: SongData = 'error' in parsed ? {
-  title: '九十九神 (読み込みエラー)',
+  title: 'tsukumogami (読み込みエラー)',
   measures: [],
 } : {
-  title: '九十九神',
+  title: 'tsukumogami',
   measures: parsed.measures,
 };
