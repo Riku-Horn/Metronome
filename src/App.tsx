@@ -13,15 +13,14 @@ import type { SongData } from './types/song';
 
 function App() {
   const metronome = useMetronome(120);
-  const [song, setSong] = useState<SongData | null>(null);
+  const [song, setSong] = useState<SongData>(() => {
+    return loadSongFromStorage() || sampleSong;
+  });
   const [showOverlay, setShowOverlay] = useState(true);
 
   // Load saved song or default sample on mount
   useEffect(() => {
-    const saved = loadSongFromStorage();
-    const initialSong = saved || sampleSong;
-    setSong(initialSong);
-    metronome.loadSong(initialSong);
+    metronome.loadSong(song);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

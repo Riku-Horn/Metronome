@@ -324,7 +324,6 @@ input[type="number"] {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  transition: all 0.08s ease;
   position: relative;
 }
 
@@ -349,14 +348,12 @@ input[type="number"] {
   background: var(--color-accent-cyan);
   border-color: var(--color-accent-cyan);
   box-shadow: 0 0 20px var(--color-accent-cyan), 0 0 40px var(--color-accent-cyan-dim);
-  transform: scale(1.15);
 }
 
 .beat-dot-active.beat-dot-sub {
   background: var(--color-accent-sub);
   border-color: var(--color-accent-sub);
   box-shadow: 0 0 14px var(--color-accent-sub), 0 0 28px var(--color-accent-sub-dim);
-  transform: scale(1.15);
 }
 
 .beat-dot-label {

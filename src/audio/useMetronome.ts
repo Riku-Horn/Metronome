@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { AudioEngine } from './AudioEngine';
+import { computeSectionMeasures } from '../utils/songParser';
 import type { SongData, BeatEvent, PlaybackPosition } from '../types/song';
 
 interface UseMetronomeReturn {
@@ -32,6 +33,7 @@ interface UseMetronomeReturn {
 
 export function useMetronome(initialBpm = 120): UseMetronomeReturn {
   const engineRef = useRef<AudioEngine | null>(null);
+  const songRef = useRef<SongData | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [bpm, setBpmState] = useState(initialBpm);
   const [isInitialized, setIsInitialized] = useState(false);
@@ -62,6 +64,8 @@ export function useMetronome(initialBpm = 120): UseMetronomeReturn {
         measureIndex,
         beatIndex: 0,
       }));
+      // Sync BPM state with engine (auto-snapped to target_bpm)
+      setBpmState(engine.getBpm());
     });
 
     return () => {
@@ -114,11 +118,20 @@ export function useMetronome(initialBpm = 120): UseMetronomeReturn {
   }, []);
 
   const loadSong = useCallback((song: SongData) => {
+    songRef.current = song;
     if (engineRef.current) {
+      // Ensure sectionMeasure is computed (handles sampleSong and other direct data)
+      computeSectionMeasures(song.measures);
       engineRef.current.setMeasures(song.measures);
       // Reset position
       setPosition({ measureIndex: 0, beatIndex: 0, isPlaying: false });
       setCurrentBeat(null);
+      // Default BPM to first measure's target BPM (in-tempo)
+      if (song.measures.length > 0) {
+        const targetBpm = song.measures[0].target_bpm;
+        setBpmState(targetBpm);
+        engineRef.current.setBpm(targetBpm);
+      }
     }
   }, []);
 
@@ -131,6 +144,13 @@ export function useMetronome(initialBpm = 120): UseMetronomeReturn {
         beatIndex: 0,
       }));
       setCurrentBeat(null);
+      // Set BPM to jumped-to measure's target BPM (in-tempo)
+      const song = songRef.current;
+      if (song && measureIndex >= 0 && measureIndex < song.measures.length) {
+        const targetBpm = song.measures[measureIndex].target_bpm;
+        setBpmState(targetBpm);
+        engineRef.current.setBpm(targetBpm);
+      }
     }
   }, []);
 

@@ -6,10 +6,14 @@ import { getBeatPattern, getSubBeatDuration } from '../utils/songParser';
  * Implements Chris Wilson's look-ahead scheduling pattern for
  * sample-accurate timing that doesn't drift even under heavy load
  * or when the browser tab is in the background.
+ *
+ * UI synchronization uses requestAnimationFrame polling of
+ * audioContext.currentTime for frame-accurate visual updates.
  */
 export class AudioEngine {
   private audioContext: AudioContext | null = null;
   private schedulerTimer: number | null = null;
+  private rafHandle: number | null = null;
   private isPlaying = false;
 
   // Scheduling parameters
@@ -37,6 +41,15 @@ export class AudioEngine {
   // Callbacks
   private onBeat: ((event: BeatEvent) => void) | null = null;
   private onMeasureChange: ((measureIndex: number) => void) | null = null;
+
+  // Pending UI events queue — events are scheduled ahead of time and
+  // dispatched when audioContext.currentTime reaches their time.
+  private pendingBeats: { time: number; event: BeatEvent }[] = [];
+  private pendingMeasureChanges: { time: number; measureIndex: number }[] = [];
+
+  // Latency compensation (in seconds) to align visual flash with audio arrival.
+  // We dispatch UI events slightly before the actual audio time to account for React render + screen refresh delay.
+  private readonly UI_LATENCY_COMPENSATION = 0.015; // 15ms early
 
   /**
    * Initialize the AudioContext. Must be called from a user gesture on iOS.
@@ -92,9 +105,15 @@ export class AudioEngine {
     this.currentBeatIndex = beatIndex;
     this.updateCurrentPattern();
 
+    // Clear pending UI events on jump
+    this.pendingBeats = [];
+    this.pendingMeasureChanges = [];
+
     if (this.isPlaying && this.audioContext) {
       // Reset the next note time to now
       this.nextNoteTime = this.audioContext.currentTime;
+      // Schedule the jump beat immediately
+      this.scheduler();
     }
   }
 
@@ -123,11 +142,19 @@ export class AudioEngine {
     this.isPlaying = true;
     this.nextNoteTime = this.audioContext.currentTime;
     this.updateCurrentPattern();
+    this.pendingBeats = [];
+    this.pendingMeasureChanges = [];
 
-    // Start the scheduler loop
+    // Schedule the first notes immediately
+    this.scheduler();
+
+    // Start the scheduler loop (schedules audio ahead of time)
     this.schedulerTimer = window.setInterval(() => {
       this.scheduler();
     }, this.SCHEDULE_INTERVAL);
+
+    // Start the rAF loop (dispatches UI events in sync with audio time)
+    this.startUiLoop();
   }
 
   /**
@@ -139,6 +166,12 @@ export class AudioEngine {
       clearInterval(this.schedulerTimer);
       this.schedulerTimer = null;
     }
+    if (this.rafHandle !== null) {
+      cancelAnimationFrame(this.rafHandle);
+      this.rafHandle = null;
+    }
+    this.pendingBeats = [];
+    this.pendingMeasureChanges = [];
   }
 
   /**
@@ -177,6 +210,36 @@ export class AudioEngine {
   }
 
   /**
+   * requestAnimationFrame loop that dispatches pending UI events
+   * when audioContext.currentTime has reached their scheduled time.
+   * This gives frame-accurate visual sync (~16ms at 60Hz, ~8ms at 120Hz)
+   * which is much better than setTimeout's ±4-16ms jitter.
+   */
+  private startUiLoop(): void {
+    const tick = () => {
+      if (!this.isPlaying || !this.audioContext) return;
+
+      const now = this.audioContext.currentTime;
+
+      // Dispatch pending beat events whose time has arrived (compensated)
+      while (this.pendingBeats.length > 0 && this.pendingBeats[0].time <= now + this.UI_LATENCY_COMPENSATION) {
+        const entry = this.pendingBeats.shift()!;
+        if (this.onBeat) this.onBeat(entry.event);
+      }
+
+      // Dispatch pending measure change events whose time has arrived (compensated)
+      while (this.pendingMeasureChanges.length > 0 && this.pendingMeasureChanges[0].time <= now + this.UI_LATENCY_COMPENSATION) {
+        const entry = this.pendingMeasureChanges.shift()!;
+        if (this.onMeasureChange) this.onMeasureChange(entry.measureIndex);
+      }
+
+      this.rafHandle = requestAnimationFrame(tick);
+    };
+
+    this.rafHandle = requestAnimationFrame(tick);
+  }
+
+  /**
    * Schedule a single note at the given audio time.
    */
   private scheduleNote(time: number): void {
@@ -208,24 +271,14 @@ export class AudioEngine {
       osc.stop(time + this.SUB_DURATION);
     }
 
-    // Emit beat event for UI synchronization
-    if (this.onBeat) {
-      // Calculate delay from now to when the beat actually plays
-      const delay = Math.max(0, (time - this.audioContext.currentTime) * 1000);
-      const event: BeatEvent = {
-        measureIndex: this.currentMeasureIndex,
-        beatIndex: this.currentBeatIndex,
-        soundType,
-        time,
-      };
-      if (delay < 5) {
-        this.onBeat(event);
-      } else {
-        setTimeout(() => {
-          if (this.onBeat) this.onBeat(event);
-        }, delay);
-      }
-    }
+    // Queue beat event for rAF-based UI dispatch
+    const event: BeatEvent = {
+      measureIndex: this.currentMeasureIndex,
+      beatIndex: this.currentBeatIndex,
+      soundType,
+      time,
+    };
+    this.pendingBeats.push({ time, event });
   }
 
   /**
@@ -252,22 +305,20 @@ export class AudioEngine {
 
       this.updateCurrentPattern();
 
-      if (this.onMeasureChange) {
-        // Fire measure change with similar timing compensation
-        const delay = Math.max(0,
-          this.audioContext
-            ? (this.nextNoteTime - this.audioContext.currentTime) * 1000
-            : 0
-        );
-        const idx = this.currentMeasureIndex;
-        if (delay < 5) {
-          this.onMeasureChange(idx);
-        } else {
-          setTimeout(() => {
-            if (this.onMeasureChange) this.onMeasureChange(idx);
-          }, delay);
-        }
+      // Auto-snap BPM when the score's target_bpm changes between measures
+      const prevMeasure = this.measures[
+        this.currentMeasureIndex === 0 ? this.measures.length - 1 : this.currentMeasureIndex - 1
+      ];
+      const newMeasure = this.measures[this.currentMeasureIndex];
+      if (newMeasure.target_bpm !== prevMeasure.target_bpm) {
+        this.bpm = newMeasure.target_bpm;
       }
+
+      // Queue measure change event for rAF-based UI dispatch
+      this.pendingMeasureChanges.push({
+        time: this.nextNoteTime,
+        measureIndex: this.currentMeasureIndex,
+      });
     }
   }
 

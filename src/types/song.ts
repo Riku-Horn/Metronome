@@ -12,6 +12,8 @@ export interface MeasureData {
   denominator: number;
   /** Target BPM (quarter note basis) for this measure */
   target_bpm: number;
+  /** Measure number within the section (1-indexed, auto-computed) */
+  sectionMeasure?: number;
   /** Optional custom beat pattern override (e.g., ['A','B','A','B','A','A','A']) */
   beat_pattern?: ('A' | 'B')[];
 }

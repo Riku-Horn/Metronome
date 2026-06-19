@@ -1,73 +1,62 @@
-# React + TypeScript + Vite
+# 拍子・テンポ変化対応 高精度メトロノーム
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Vite, React, TypeScript, および Web Audio API を使用して構築された、変拍子や曲中でのテンポ変更に対応した練習用高精度メトロノームアプリです。
 
-Currently, two official plugins are available:
+## 主な機能
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+1. **高精度な発音と低遅延な表示同期 (Low-Latency Engine)**
+   * Web Audio API を活用した先読み（Look-ahead）スケジューリングにより、ブラウザのバックグラウンド動作時でもテンポが崩れません。
+   * `requestAnimationFrame` を用いた描画処理と 15ms の先行配信補正により、クリック音と画面表示（ランプ）の同期ズレを極限まで抑えています。
 
-## React Compiler
+2. **変拍子・テンポ変化への対応**
+   * 各小節ごとに拍子（4/4, 7/8, 3/4 等）やテンポ（BPM）を自由に変えることができます。
+   * セクション（練習番号）切り替え時に、自動でそのセクションの指定テンポ（インテンポ）に追従します。
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+3. **「〜小節前から」の練習をサポートする高機能位置選択**
+   * **練習番号（セクション）**、**小節番号**、および曲頭からの**累計小節数**から再生開始位置を選択できます。
+   * 特定セクションの前に「-5〜-1小節前」のオフセットを指定して、「Bの5小節前から練習を開始する」といった実践的な練習が可能です。
 
-## Expanding the ESLint configuration
+4. **ブロック形式の JSON 曲データ読み込み**
+   * ドラッグ＆ドロップまたはファイル選択により、ブロック形式で記述された曲の構成データを簡単にロードできます。
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+---
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## 曲データ (JSON) フォーマット
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+アプリで読み込む `tsukumogami.json` などのデータは、以下のキーを持つブロックの配列で記述します。
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+| キー | 型 | 説明 |
+| :--- | :--- | :--- |
+| `repeat` | `number` | そのブロックが繰り返される小節数。 |
+| `section` | `string` | セクション名 (例: `"A"`, `"B"`)。 |
+| `numerator` | `number` | 拍子の分子 (例: 4/4 拍子なら `4`)。 |
+| `denominator` | `number` | 拍子の分母 (例: 4/4 拍子なら `4`)。 |
+| `target_bpm` | `number` | そのブロックの指定テンポ (BPM)。 |
+| `isAlternating` | `boolean` (任意) | `true` の場合、奇数リピートは指定拍子、偶数リピートは自動的に `4/4` 拍子になります。 |
+
+### 記述例
+```json
+[
+  { "repeat": 6, "section": "Intro", "numerator": 4, "denominator": 4, "target_bpm": 66 },
+  { "repeat": 8, "section": "A", "numerator": 7, "denominator": 8, "target_bpm": 150, "isAlternating": true }
+]
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+---
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## 開発環境のセットアップと実行
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 依存関係のインストール
+```bash
+npm install
+```
+
+### 開発用サーバーの起動
+```bash
+npm run dev
+```
+
+### 本番用ビルドの作成
+```bash
+npm run build
 ```

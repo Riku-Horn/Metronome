@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useRef, useCallback } from 'react';
 
 interface TempoControlProps {
   bpm: number;
@@ -7,13 +7,15 @@ interface TempoControlProps {
 }
 
 export function TempoControl({ bpm, targetBpm, onBpmChange }: TempoControlProps) {
+  const [prevBpm, setPrevBpm] = useState(bpm);
   const [inputValue, setInputValue] = useState(String(bpm));
   const holdTimerRef = useRef<number | null>(null);
   const holdIntervalRef = useRef<number | null>(null);
 
-  useEffect(() => {
+  if (bpm !== prevBpm) {
+    setPrevBpm(bpm);
     setInputValue(String(bpm));
-  }, [bpm]);
+  }
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
