@@ -7,6 +7,7 @@ import { TransportControls } from './components/TransportControls';
 import { TempoControl } from './components/TempoControl';
 import { PositionSelector } from './components/PositionSelector';
 import { SongLoader } from './components/SongLoader';
+import { HelpPage } from './components/HelpPage';
 import { sampleSong } from './data/sampleSong';
 import { loadSongFromStorage, saveSongToStorage } from './utils/songParser';
 import type { SongData } from './types/song';
@@ -17,6 +18,7 @@ function App() {
     return loadSongFromStorage() || sampleSong;
   });
   const [showOverlay, setShowOverlay] = useState(true);
+  const [showHelp, setShowHelp] = useState(false);
 
   // Load saved song or default sample on mount
   useEffect(() => {
@@ -45,11 +47,22 @@ function App() {
   return (
     <>
       {showOverlay && <AudioStartOverlay onStart={handleInitialize} />}
+      {showHelp && <HelpPage onClose={() => setShowHelp(false)} />}
 
       <div className="app-container" id="app-container">
         {/* Header with song loader */}
         <div className="app-header">
-          <span className="app-title">Metronome</span>
+          <div className="app-header-left">
+            <span className="app-title">Metronome</span>
+            <button
+              className="help-btn"
+              onClick={() => setShowHelp(true)}
+              id="help-button"
+              aria-label="ヘルプを表示"
+            >
+              ?
+            </button>
+          </div>
           <SongLoader
             onSongLoaded={handleSongLoaded}
             currentSongTitle={song?.title || null}

@@ -78,24 +78,12 @@ export function PositionSelector({ song, currentMeasureIndex, onJumpTo }: Positi
     if (idx >= 0) onJumpTo(idx);
   };
 
-  const handleReset = () => {
-    onJumpTo(0);
-  };
-
   if (!song) return null;
 
   return (
     <div className="position-selector" id="position-selector">
       <div className="position-selector-header">
         <span className="position-selector-label">再生位置</span>
-        <button
-          className="position-reset-btn"
-          onClick={handleReset}
-          id="reset-position"
-          aria-label="先頭に戻る"
-        >
-          ⏮ 先頭
-        </button>
       </div>
 
       <div className="position-selector-row">
