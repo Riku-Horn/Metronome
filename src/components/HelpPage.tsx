@@ -23,7 +23,7 @@ export function HelpPage({ onClose }: HelpPageProps) {
             <h2 className="help-section-title">概要</h2>
             <p className="help-text">
               変拍子やテンポ変化に対応した、練習用のメトロノームアプリです。
-              当面の間、付喪神の二楽章専用とします。
+              当面の間、付喪神専用とします。
             </p>
           </section>
 

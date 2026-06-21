@@ -20,7 +20,7 @@ export function MeasureDisplay({ currentMeasure, bpm }: MeasureDisplayProps) {
         {/* Section */}
         <div className="measure-info-block">
           <span className="measure-label">Section</span>
-          <span className="measure-value section-value">{currentMeasure.section}</span>
+          <span className="measure-value section-value">{currentMeasure.section.trim() || '(intro)'}</span>
         </div>
 
         {/* Time Signature */}

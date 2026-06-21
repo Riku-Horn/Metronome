@@ -43,7 +43,9 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-html, body, #root {
+html,
+body,
+#root {
   width: 100%;
   height: 100%;
   overflow: hidden;
@@ -62,6 +64,7 @@ input[type="number"]::-webkit-outer-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
+
 input[type="number"] {
   -moz-appearance: textfield;
 }
@@ -201,8 +204,17 @@ input[type="number"] {
 }
 
 @keyframes overlayPulse {
-  0%, 100% { transform: scale(1); opacity: 0.9; }
-  50% { transform: scale(1.05); opacity: 1; }
+
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.9;
+  }
+
+  50% {
+    transform: scale(1.05);
+    opacity: 1;
+  }
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -449,8 +461,15 @@ input[type="number"] {
 }
 
 @keyframes transportPulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
-  50% { box-shadow: 0 0 0 12px rgba(239, 68, 68, 0); }
+
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4);
+  }
+
+  50% {
+    box-shadow: 0 0 0 12px rgba(239, 68, 68, 0);
+  }
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -730,8 +749,13 @@ input[type="number"] {
 }
 
 @keyframes helpFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 .help-panel {
@@ -748,8 +772,15 @@ input[type="number"] {
 }
 
 @keyframes helpSlideIn {
-  from { transform: translateY(16px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from {
+    transform: translateY(16px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 .help-header {
@@ -929,6 +960,187 @@ input[type="number"] {
 }
 
 /* ═══════════════════════════════════════════════════════
+   Song Selector Modal
+   ═══════════════════════════════════════════════════════ */
+.song-selector-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 120; /* Keep it higher than AudioStartOverlay and HelpPage if needed, or equal */
+  /* background: rgba(0, 0, 0, 0.85); */
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: helpFadeIn 0.25s ease;
+}
+
+.song-selector-panel {
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: 20px;
+  max-width: 460px;
+  width: 100%;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: helpSlideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.song-selector-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 24px;
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+
+.song-selector-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  letter-spacing: 0.02em;
+}
+
+.song-selector-close-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-tertiary);
+  color: var(--color-text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.song-selector-close-btn:hover {
+  background: var(--color-bg-glass-light);
+  color: var(--color-text-primary);
+  border-color: var(--color-border-hover);
+}
+
+.song-selector-content {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.song-selector-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.song-selector-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.song-selector-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.song-selector-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-tertiary);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  text-align: left;
+  width: 100%;
+}
+
+.song-selector-item:hover {
+  border-color: var(--color-accent-cyan);
+  background: rgba(6, 214, 160, 0.04);
+  transform: translateY(-1px);
+}
+
+.song-selector-item:active {
+  transform: translateY(0);
+}
+
+.song-selector-item-active {
+  border-color: var(--color-accent-cyan);
+  background: rgba(6, 214, 160, 0.08);
+}
+
+.song-selector-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.song-selector-item-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.song-selector-item-desc {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+.song-selector-item-active-badge {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--color-accent-cyan);
+  background: rgba(6, 214, 160, 0.12);
+  padding: 3px 8px;
+  border-radius: 9999px;
+  letter-spacing: 0.02em;
+}
+
+.song-selector-divider {
+  height: 1px;
+  background: var(--color-border);
+}
+
+.song-selector-import-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1.5px dashed var(--color-border);
+  background: var(--color-bg-glass);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  width: 100%;
+}
+
+.song-selector-import-btn:hover {
+  border-color: var(--color-accent-cyan);
+  color: var(--color-accent-cyan);
+  background: rgba(6, 214, 160, 0.02);
+}
+
+/* ═══════════════════════════════════════════════════════
    Responsive — iPad Landscape Optimization
    ═══════════════════════════════════════════════════════ */
 
@@ -946,7 +1158,8 @@ input[type="number"] {
     font-size: 32px;
   }
 
-  .ts-numerator, .ts-denominator {
+  .ts-numerator,
+  .ts-denominator {
     font-size: 28px;
   }
 
@@ -980,6 +1193,7 @@ input[type="number"] {
 }
 
 @media (min-width: 769px) and (max-height: 600px) {
+
   /* Landscape compact mode */
   .app-container {
     padding: 8px 24px;
