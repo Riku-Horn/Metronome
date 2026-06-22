@@ -127,6 +127,10 @@ function App() {
               bpm={metronome.bpm}
               targetBpm={targetBpm}
               onBpmChange={metronome.setBpm}
+              bpmMode={metronome.bpmMode}
+              onBpmModeChange={metronome.setBpmMode}
+              multiplier={metronome.multiplier}
+              onMultiplierChange={metronome.setMultiplier}
             />
           </div>
         </div>

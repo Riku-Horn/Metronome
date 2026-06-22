@@ -41,6 +41,8 @@ export class AudioEngine {
   private currentBeatIndex = 0;
   private nextNoteTime = 0;
   private bpm = 120;
+  private bpmMode: 'fixed' | 'multiplier' = 'multiplier';
+  private multiplier = 1.0;
 
   // Song data
   private measures: MeasureData[] = [];
@@ -111,6 +113,11 @@ export class AudioEngine {
   setMeasures(measures: MeasureData[]): void {
     this.measures = measures;
     this.updateCurrentPattern();
+    if (this.bpmMode === 'multiplier' && this.measures.length > 0) {
+      const idx = Math.min(this.currentMeasureIndex, this.measures.length - 1);
+      const currentMeasure = this.measures[idx];
+      this.bpm = Math.max(20, Math.min(400, Math.round(currentMeasure.target_bpm * this.multiplier)));
+    }
   }
 
   /**
@@ -122,6 +129,22 @@ export class AudioEngine {
 
   getBpm(): number {
     return this.bpm;
+  }
+
+  setBpmMode(mode: 'fixed' | 'multiplier'): void {
+    this.bpmMode = mode;
+  }
+
+  getBpmMode(): 'fixed' | 'multiplier' {
+    return this.bpmMode;
+  }
+
+  setMultiplier(multiplier: number): void {
+    this.multiplier = multiplier;
+  }
+
+  getMultiplier(): number {
+    return this.multiplier;
   }
 
   /**
@@ -146,6 +169,11 @@ export class AudioEngine {
     this.currentMeasureIndex = measureIndex;
     this.currentBeatIndex = beatIndex;
     this.updateCurrentPattern();
+
+    if (this.bpmMode === 'multiplier') {
+      const currentMeasure = this.measures[this.currentMeasureIndex];
+      this.bpm = Math.max(20, Math.min(400, Math.round(currentMeasure.target_bpm * this.multiplier)));
+    }
 
     // Clear pending UI events on jump
     this.pendingBeats = [];
@@ -358,13 +386,12 @@ export class AudioEngine {
 
       this.updateCurrentPattern();
 
-      // Auto-snap BPM when the score's target_bpm changes between measures
-      const prevMeasure = this.measures[
-        this.currentMeasureIndex === 0 ? this.measures.length - 1 : this.currentMeasureIndex - 1
-      ];
+      // Auto-snap or scale BPM when the measure changes
       const newMeasure = this.measures[this.currentMeasureIndex];
-      if (newMeasure.target_bpm !== prevMeasure.target_bpm) {
-        this.bpm = newMeasure.target_bpm;
+      if (this.bpmMode === 'multiplier') {
+        this.bpm = Math.max(20, Math.min(400, Math.round(newMeasure.target_bpm * this.multiplier)));
+      } else {
+        // In 'fixed' mode, we do NOT change this.bpm. It remains at the fixed user-set value.
       }
 
       // Queue measure change event for rAF-based UI dispatch

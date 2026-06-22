@@ -521,41 +521,81 @@ input[type="number"] {
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border: 1px solid var(--color-border);
-  border-radius: 12px;
-  padding: 12px 16px;
+  border-radius: 16px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
   gap: 10px;
+  position: relative;
 }
 
-.tempo-control-header {
+.tempo-panel {
+  position: relative;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(148, 163, 184, 0.08);
+  border-radius: 12px;
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.panel-active {
+  opacity: 1;
+  border-color: var(--color-border-hover);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.panel-inactive {
+  opacity: 0.35;
+  cursor: pointer;
+}
+
+.panel-inactive:hover {
+  opacity: 0.6;
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(148, 163, 184, 0.2);
+}
+
+/* Overlay that intercepts pointer events on the inactive panel */
+.panel-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  cursor: pointer;
+  border-radius: 12px;
+}
+
+.tempo-panel-header-compact {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 .tempo-control-label {
   font-size: 11px;
   font-weight: 600;
   color: var(--color-text-muted);
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
-.tempo-control-row {
+.tempo-panel-row-compact {
   display: flex;
   align-items: center;
   gap: 8px;
+  width: 100%;
 }
 
-.tempo-btn {
-  width: 44px;
-  height: 44px;
-  border-radius: 12px;
+.tempo-btn-compact {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
   border: 1px solid var(--color-border);
   background: var(--color-bg-tertiary);
   color: var(--color-text-primary);
-  font-size: 22px;
+  font-size: 16px;
   font-weight: 600;
   cursor: pointer;
   display: flex;
@@ -565,36 +605,74 @@ input[type="number"] {
   user-select: none;
   -webkit-user-select: none;
   touch-action: manipulation;
+  flex-shrink: 0;
 }
 
-.tempo-btn:hover {
+.tempo-btn-compact:hover:not(:disabled) {
   background: var(--color-bg-glass-light);
   border-color: var(--color-border-hover);
 }
 
-.tempo-btn:active {
+.tempo-btn-compact:active:not(:disabled) {
   transform: scale(0.92);
 }
 
-.tempo-input {
-  width: 80px;
-  height: 44px;
+.tempo-btn-compact:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.tempo-input-compact {
+  width: 60px;
+  height: 32px;
   text-align: center;
   font-family: var(--font-mono);
-  font-size: 24px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--color-text-primary);
   background: var(--color-bg-primary);
   border: 1px solid var(--color-border);
-  border-radius: 10px;
+  border-radius: 8px;
   outline: none;
   transition: border-color 0.2s ease;
+  flex-shrink: 0;
 }
 
-.tempo-input:focus {
+.tempo-input-compact:focus {
   border-color: var(--color-accent-cyan);
 }
 
+.tempo-input-compact:disabled {
+  color: var(--color-text-muted);
+  background: transparent;
+  border-color: transparent;
+}
+
+/* Compact Multiplier Badge Display */
+.multiplier-value-display-compact {
+  width: 60px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--color-accent-amber);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.panel-inactive .multiplier-value-display-compact {
+  color: var(--color-text-muted);
+  background: transparent;
+  border-color: transparent;
+}
+
+/* Sliders styling */
 .tempo-slider {
   width: 100%;
   height: 6px;
@@ -603,6 +681,9 @@ input[type="number"] {
   background: var(--color-bg-tertiary);
   border-radius: 3px;
   outline: none;
+  transition: opacity 0.2s ease;
+  flex: 1;
+  min-width: 0;
 }
 
 .tempo-slider::-webkit-slider-thumb {
@@ -613,23 +694,47 @@ input[type="number"] {
   background: var(--color-accent-cyan);
   cursor: pointer;
   box-shadow: 0 0 8px var(--color-accent-cyan-dim);
+  transition: transform 0.15s ease, background-color 0.2s ease;
 }
 
-.tempo-snap-btn {
+.tempo-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.1);
+}
+
+.panel-inactive .tempo-slider::-webkit-slider-thumb {
+  background: var(--color-text-muted);
+  box-shadow: none;
+  cursor: default;
+}
+
+/* Multiplier slider specific thumb color (Amber) */
+.multiplier-slider::-webkit-slider-thumb {
+  background: var(--color-accent-amber);
+  box-shadow: 0 0 8px var(--color-accent-amber-dim);
+}
+
+.panel-inactive .multiplier-slider::-webkit-slider-thumb {
+  background: var(--color-text-muted);
+  box-shadow: none;
+  cursor: default;
+}
+
+.tempo-snap-btn-compact {
   width: 100%;
   padding: 8px;
   border-radius: 8px;
   border: 1px solid var(--color-accent-cyan-dim);
   background: rgba(6, 214, 160, 0.08);
   color: var(--color-accent-cyan);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
-.tempo-snap-btn:hover {
+.tempo-snap-btn-compact:hover {
   background: rgba(6, 214, 160, 0.15);
+  box-shadow: 0 0 10px rgba(6, 214, 160, 0.2);
 }
 
 /* ═══════════════════════════════════════════════════════
@@ -1224,6 +1329,17 @@ input[type="number"] {
   .app-controls-row {
     grid-template-columns: 1fr;
     gap: 10px;
+  }
+
+  .position-selector,
+  .tempo-control {
+    padding: 8px 12px;
+    gap: 8px;
+  }
+
+  .tempo-panel {
+    padding: 6px 10px;
+    gap: 4px;
   }
 
   .transport-btn {

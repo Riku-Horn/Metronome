@@ -33,6 +33,14 @@ interface UseMetronomeReturn {
   soundMode: 'synth' | 'wav';
   /** Set sound mode */
   setSoundMode: (mode: 'synth' | 'wav') => void;
+  /** Current BPM mode: fixed or multiplier */
+  bpmMode: 'fixed' | 'multiplier';
+  /** Current tempo multiplier/factor */
+  multiplier: number;
+  /** Set BPM mode */
+  setBpmMode: (mode: 'fixed' | 'multiplier') => void;
+  /** Set tempo multiplier */
+  setMultiplier: (multiplier: number) => void;
 }
 
 export function useMetronome(initialBpm = 120): UseMetronomeReturn {
@@ -48,11 +56,15 @@ export function useMetronome(initialBpm = 120): UseMetronomeReturn {
     isPlaying: false,
   });
   const [soundMode, setSoundModeState] = useState<'synth' | 'wav'>('synth');
+  const [bpmMode, setBpmModeState] = useState<'fixed' | 'multiplier'>('multiplier');
+  const [multiplier, setMultiplierState] = useState(1.00);
 
   // Create engine on mount
   useEffect(() => {
     const engine = new AudioEngine();
     engineRef.current = engine;
+    engine.setBpmMode('multiplier');
+    engine.setMultiplier(1.00);
 
     engine.setOnBeat((event: BeatEvent) => {
       setCurrentBeat(event);
@@ -134,11 +146,16 @@ export function useMetronome(initialBpm = 120): UseMetronomeReturn {
       // Default BPM to first measure's target BPM (in-tempo)
       if (song.measures.length > 0) {
         const targetBpm = song.measures[0].target_bpm;
-        setBpmState(targetBpm);
-        engineRef.current.setBpm(targetBpm);
+        if (bpmMode === 'multiplier') {
+          const newBpm = Math.max(20, Math.min(400, Math.round(targetBpm * multiplier)));
+          setBpmState(newBpm);
+          engineRef.current.setBpm(newBpm);
+        } else {
+          engineRef.current.setBpm(bpm);
+        }
       }
     }
-  }, []);
+  }, [bpm, bpmMode, multiplier]);
 
   const jumpToMeasure = useCallback((measureIndex: number) => {
     if (engineRef.current) {
@@ -153,11 +170,16 @@ export function useMetronome(initialBpm = 120): UseMetronomeReturn {
       const song = songRef.current;
       if (song && measureIndex >= 0 && measureIndex < song.measures.length) {
         const targetBpm = song.measures[measureIndex].target_bpm;
-        setBpmState(targetBpm);
-        engineRef.current.setBpm(targetBpm);
+        if (bpmMode === 'multiplier') {
+          const newBpm = Math.max(20, Math.min(400, Math.round(targetBpm * multiplier)));
+          setBpmState(newBpm);
+          engineRef.current.setBpm(newBpm);
+        } else {
+          engineRef.current.setBpm(bpm);
+        }
       }
     }
-  }, []);
+  }, [bpm, bpmMode, multiplier]);
 
   const setSoundMode = useCallback(async (mode: 'synth' | 'wav') => {
     setSoundModeState(mode);
@@ -168,6 +190,37 @@ export function useMetronome(initialBpm = 120): UseMetronomeReturn {
       }
     }
   }, [isInitialized]);
+
+  const setBpmMode = useCallback((mode: 'fixed' | 'multiplier') => {
+    setBpmModeState(mode);
+    if (engineRef.current) {
+      engineRef.current.setBpmMode(mode);
+      if (mode === 'multiplier' && songRef.current) {
+        const idx = Math.min(position.measureIndex, songRef.current.measures.length - 1);
+        const targetBpm = songRef.current.measures[idx]?.target_bpm ?? 120;
+        const newBpm = Math.max(20, Math.min(400, Math.round(targetBpm * multiplier)));
+        setBpmState(newBpm);
+        engineRef.current.setBpm(newBpm);
+      } else {
+        engineRef.current.setBpm(bpm);
+      }
+    }
+  }, [multiplier, position.measureIndex, bpm]);
+
+  const setMultiplier = useCallback((m: number) => {
+    const clampedM = Math.max(0.25, Math.min(3.0, parseFloat(m.toFixed(2))));
+    setMultiplierState(clampedM);
+    if (engineRef.current) {
+      engineRef.current.setMultiplier(clampedM);
+      if (bpmMode === 'multiplier' && songRef.current) {
+        const idx = Math.min(position.measureIndex, songRef.current.measures.length - 1);
+        const targetBpm = songRef.current.measures[idx]?.target_bpm ?? 120;
+        const newBpm = Math.max(20, Math.min(400, Math.round(targetBpm * clampedM)));
+        setBpmState(newBpm);
+        engineRef.current.setBpm(newBpm);
+      }
+    }
+  }, [bpmMode, position.measureIndex]);
 
   return {
     isPlaying,
@@ -184,5 +237,9 @@ export function useMetronome(initialBpm = 120): UseMetronomeReturn {
     jumpToMeasure,
     soundMode,
     setSoundMode,
+    bpmMode,
+    multiplier,
+    setBpmMode,
+    setMultiplier,
   };
 }
