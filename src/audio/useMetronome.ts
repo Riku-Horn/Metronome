@@ -29,6 +29,10 @@ interface UseMetronomeReturn {
   loadSong: (song: SongData) => void;
   /** Jump to a specific measure */
   jumpToMeasure: (measureIndex: number) => void;
+  /** Current sound mode */
+  soundMode: 'synth' | 'wav';
+  /** Set sound mode */
+  setSoundMode: (mode: 'synth' | 'wav') => void;
 }
 
 export function useMetronome(initialBpm = 120): UseMetronomeReturn {
@@ -43,6 +47,7 @@ export function useMetronome(initialBpm = 120): UseMetronomeReturn {
     beatIndex: 0,
     isPlaying: false,
   });
+  const [soundMode, setSoundModeState] = useState<'synth' | 'wav'>('synth');
 
   // Create engine on mount
   useEffect(() => {
@@ -154,6 +159,16 @@ export function useMetronome(initialBpm = 120): UseMetronomeReturn {
     }
   }, []);
 
+  const setSoundMode = useCallback(async (mode: 'synth' | 'wav') => {
+    setSoundModeState(mode);
+    if (engineRef.current) {
+      engineRef.current.setSoundMode(mode);
+      if (mode === 'wav' && isInitialized) {
+        await engineRef.current.init();
+      }
+    }
+  }, [isInitialized]);
+
   return {
     isPlaying,
     bpm,
@@ -167,5 +182,7 @@ export function useMetronome(initialBpm = 120): UseMetronomeReturn {
     setBpm,
     loadSong,
     jumpToMeasure,
+    soundMode,
+    setSoundMode,
   };
 }

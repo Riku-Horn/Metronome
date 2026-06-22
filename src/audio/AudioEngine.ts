@@ -1,5 +1,7 @@
 import type { MeasureData, BeatEvent } from '../types/song';
 import { getBeatPattern, getSubBeatDuration } from '../utils/songParser';
+import aWav from './a.wav';
+import bWav from './b.wav';
 
 /**
  * High-precision metronome audio engine using Web Audio API.
@@ -27,6 +29,12 @@ export class AudioEngine {
   private readonly SUB_DURATION = 0.03;    // seconds
   private readonly ACCENT_GAIN = 0.8;
   private readonly SUB_GAIN = 0.4;
+
+  // Custom 電子音2 buffers
+  private bufferA: AudioBuffer | null = null;
+  private bufferB: AudioBuffer | null = null;
+  private isWavLoaded = false;
+  private soundMode: 'synth' | 'wav' = 'synth';
 
   // Playback state
   private currentMeasureIndex = 0;
@@ -61,6 +69,40 @@ export class AudioEngine {
     if (this.audioContext.state === 'suspended') {
       await this.audioContext.resume();
     }
+    if (!this.isWavLoaded) {
+      this.isWavLoaded = true;
+      await this.loadWavBuffers();
+    }
+  }
+
+  /**
+   * Preload custom 電子音2 files.
+   */
+  private async loadWavBuffers(): Promise<void> {
+    if (!this.audioContext) return;
+    try {
+      const [resA, resB] = await Promise.all([
+        fetch(aWav),
+        fetch(bWav)
+      ]);
+      const [arrayBufferA, arrayBufferB] = await Promise.all([
+        resA.arrayBuffer(),
+        resB.arrayBuffer()
+      ]);
+      this.bufferA = await this.audioContext.decodeAudioData(arrayBufferA);
+      this.bufferB = await this.audioContext.decodeAudioData(arrayBufferB);
+    } catch (err) {
+      console.error('Failed to load 電子音2 audio files:', err);
+      this.isWavLoaded = false;
+    }
+  }
+
+  setSoundMode(mode: 'synth' | 'wav'): void {
+    this.soundMode = mode;
+  }
+
+  getSoundMode(): 'synth' | 'wav' {
+    return this.soundMode;
   }
 
   /**
@@ -247,28 +289,39 @@ export class AudioEngine {
 
     const soundType = this.currentPattern[this.currentBeatIndex] || 'A';
 
-    // Create oscillator for this beat
-    const osc = this.audioContext.createOscillator();
-    const gain = this.audioContext.createGain();
-
-    if (soundType === 'A') {
-      osc.frequency.value = this.ACCENT_FREQ;
-      osc.type = 'sine';
-      gain.gain.setValueAtTime(this.ACCENT_GAIN, time);
-      gain.gain.exponentialRampToValueAtTime(0.001, time + this.ACCENT_DURATION);
-      osc.connect(gain);
+    if (this.soundMode === 'wav' && this.bufferA && this.bufferB) {
+      const source = this.audioContext.createBufferSource();
+      source.buffer = soundType === 'A' ? this.bufferA : this.bufferB;
+      const gain = this.audioContext.createGain();
+      const gainValue = soundType === 'A' ? 1.0 : 0.7;
+      gain.gain.setValueAtTime(gainValue, time);
+      source.connect(gain);
       gain.connect(this.audioContext.destination);
-      osc.start(time);
-      osc.stop(time + this.ACCENT_DURATION);
+      source.start(time);
     } else {
-      osc.frequency.value = this.SUB_FREQ;
-      osc.type = 'sine';
-      gain.gain.setValueAtTime(this.SUB_GAIN, time);
-      gain.gain.exponentialRampToValueAtTime(0.001, time + this.SUB_DURATION);
-      osc.connect(gain);
-      gain.connect(this.audioContext.destination);
-      osc.start(time);
-      osc.stop(time + this.SUB_DURATION);
+      // Create oscillator for this beat
+      const osc = this.audioContext.createOscillator();
+      const gain = this.audioContext.createGain();
+
+      if (soundType === 'A') {
+        osc.frequency.value = this.ACCENT_FREQ;
+        osc.type = 'sine';
+        gain.gain.setValueAtTime(this.ACCENT_GAIN, time);
+        gain.gain.exponentialRampToValueAtTime(0.001, time + this.ACCENT_DURATION);
+        osc.connect(gain);
+        gain.connect(this.audioContext.destination);
+        osc.start(time);
+        osc.stop(time + this.ACCENT_DURATION);
+      } else {
+        osc.frequency.value = this.SUB_FREQ;
+        osc.type = 'sine';
+        gain.gain.setValueAtTime(this.SUB_GAIN, time);
+        gain.gain.exponentialRampToValueAtTime(0.001, time + this.SUB_DURATION);
+        osc.connect(gain);
+        gain.connect(this.audioContext.destination);
+        osc.start(time);
+        osc.stop(time + this.SUB_DURATION);
+      }
     }
 
     // Queue beat event for rAF-based UI dispatch

@@ -63,10 +63,30 @@ function App() {
               ?
             </button>
           </div>
-          <SongLoader
-            onSongLoaded={handleSongLoaded}
-            currentSongTitle={song?.title || null}
-          />
+          <div className="app-header-right" id="app-header-right">
+            <div className="sound-selector" id="sound-selector">
+              <button
+                className={`sound-btn ${metronome.soundMode === 'synth' ? 'active' : ''}`}
+                onClick={() => metronome.setSoundMode('synth')}
+                id="sound-synth-button"
+                aria-label="電子音1に切り替え"
+              >
+                電子音1
+              </button>
+              <button
+                className={`sound-btn ${metronome.soundMode === 'wav' ? 'active' : ''}`}
+                onClick={() => metronome.setSoundMode('wav')}
+                id="sound-wav-button"
+                aria-label="電子音2に切り替え"
+              >
+                電子音2
+              </button>
+            </div>
+            <SongLoader
+              onSongLoaded={handleSongLoaded}
+              currentSongTitle={song?.title || null}
+            />
+          </div>
         </div>
 
         {/* Top: Measure Info */}
