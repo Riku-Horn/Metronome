@@ -1,4 +1,4 @@
-import { tsukumogami1Song, tsukumogami2Song } from '../data/sampleSong';
+import { concour2026_1Song, concour2026_2Song } from '../data/sampleSong';
 import type { SongData } from '../types/song';
 
 interface SongSelectorModalProps {
@@ -20,17 +20,17 @@ export function SongSelectorModal({
 
   const presets = [
     {
-      id: 'tsukumogami1',
-      title: 'tsukumogami1',
-      displayName: '付喪神 第一楽章',
-      song: tsukumogami1Song,
+      id: 'concour2026_1',
+      title: 'concour2026_1',
+      displayName: '第一楽章',
+      song: concour2026_1Song,
       // description: '',
     },
     {
-      id: 'tsukumogami2',
-      title: 'tsukumogami2',
-      displayName: '付喪神 第二楽章',
-      song: tsukumogami2Song,
+      id: 'concour2026_2',
+      title: 'concour2026_2',
+      displayName: '第二楽章',
+      song: concour2026_2Song,
       // description: '',
     },
   ];
