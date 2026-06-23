@@ -828,6 +828,9 @@ input[type="number"] {
   display: flex;
   align-items: center;
   gap: 10px;
+  max-width: 180px;
+  width: 100%;
+  overflow: hidden;
 }
 
 .song-loader-dragging {
@@ -852,12 +855,18 @@ input[type="number"] {
   display: flex;
   flex-direction: column;
   gap: 1px;
+  min-width: 0;
+  flex: 1;
 }
 
 .song-loader-current {
   font-size: 13px;
   font-weight: 600;
   color: var(--color-accent-cyan);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: block;
 }
 
 .song-loader-prompt {

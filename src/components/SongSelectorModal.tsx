@@ -21,14 +21,14 @@ export function SongSelectorModal({
   const presets = [
     {
       id: 'concour2026_1',
-      title: 'concour2026_1',
+      title: '第一楽章',
       displayName: '第一楽章',
       song: concour2026_1Song,
       // description: '',
     },
     {
       id: 'concour2026_2',
-      title: 'concour2026_2',
+      title: '第二楽章',
       displayName: '第二楽章',
       song: concour2026_2Song,
       // description: '',
