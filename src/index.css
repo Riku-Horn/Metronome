@@ -136,7 +136,8 @@ input[type="number"] {
   gap: 12px;
 }
 
-.sound-selector {
+.sound-selector,
+.subdivision-selector {
   display: flex;
   background: var(--color-bg-tertiary);
   border: 1px solid var(--color-border);
@@ -146,7 +147,8 @@ input[type="number"] {
   align-self: center;
 }
 
-.sound-btn {
+.sound-btn,
+.subdivision-btn {
   padding: 6px 12px;
   font-size: 11px;
   font-weight: 600;
@@ -159,12 +161,14 @@ input[type="number"] {
   user-select: none;
 }
 
-.sound-btn:hover {
+.sound-btn:hover,
+.subdivision-btn:hover {
   color: var(--color-text-primary);
   background: rgba(255, 255, 255, 0.03);
 }
 
-.sound-btn.active {
+.sound-btn.active,
+.subdivision-btn.active {
   background: var(--color-accent-cyan);
   color: var(--color-bg-primary);
   box-shadow: 0 2px 8px var(--color-accent-cyan-dim);
@@ -1412,17 +1416,30 @@ input[type="number"] {
   }
 
   .app-header-right {
+    display: flex;
+    flex-wrap: wrap;
     justify-content: space-between;
     width: 100%;
+    gap: 8px;
   }
 
-  .sound-selector {
-    flex: 1;
+  .sound-selector,
+  .subdivision-selector {
+    flex: 1 1 calc(50% - 4px);
     justify-content: center;
   }
 
-  .sound-btn {
+  .sound-btn,
+  .subdivision-btn {
     flex: 1;
     text-align: center;
+  }
+
+  .song-loader {
+    flex: 1 1 100%;
+  }
+
+  .song-loader-dropzone {
+    max-width: none;
   }
 }

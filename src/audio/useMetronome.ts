@@ -41,6 +41,10 @@ interface UseMetronomeReturn {
   setBpmMode: (mode: 'fixed' | 'multiplier') => void;
   /** Set tempo multiplier */
   setMultiplier: (multiplier: number) => void;
+  /** Current subdivision mode */
+  subdivisionMode: '8' | '16';
+  /** Set subdivision mode */
+  setSubdivisionMode: (mode: '8' | '16') => void;
 }
 
 export function useMetronome(initialBpm = 120): UseMetronomeReturn {
@@ -58,6 +62,7 @@ export function useMetronome(initialBpm = 120): UseMetronomeReturn {
   const [soundMode, setSoundModeState] = useState<'synth' | 'wav'>('synth');
   const [bpmMode, setBpmModeState] = useState<'fixed' | 'multiplier'>('multiplier');
   const [multiplier, setMultiplierState] = useState(1.00);
+  const [subdivisionMode, setSubdivisionModeState] = useState<'8' | '16'>('8');
 
   // Create engine on mount
   useEffect(() => {
@@ -222,6 +227,13 @@ export function useMetronome(initialBpm = 120): UseMetronomeReturn {
     }
   }, [bpmMode, position.measureIndex]);
 
+  const setSubdivisionMode = useCallback((mode: '8' | '16') => {
+    setSubdivisionModeState(mode);
+    if (engineRef.current) {
+      engineRef.current.setSubdivisionMode(mode);
+    }
+  }, []);
+
   return {
     isPlaying,
     bpm,
@@ -241,5 +253,7 @@ export function useMetronome(initialBpm = 120): UseMetronomeReturn {
     multiplier,
     setBpmMode,
     setMultiplier,
+    subdivisionMode,
+    setSubdivisionMode,
   };
 }

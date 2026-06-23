@@ -43,6 +43,8 @@ export class AudioEngine {
   private bpm = 120;
   private bpmMode: 'fixed' | 'multiplier' = 'multiplier';
   private multiplier = 1.0;
+  private subdivisionMode: '8' | '16' = '8';
+  private subStep = 0;
 
   // Song data
   private measures: MeasureData[] = [];
@@ -147,6 +149,14 @@ export class AudioEngine {
     return this.multiplier;
   }
 
+  setSubdivisionMode(mode: '8' | '16'): void {
+    this.subdivisionMode = mode;
+  }
+
+  getSubdivisionMode(): '8' | '16' {
+    return this.subdivisionMode;
+  }
+
   /**
    * Set beat callback — called each time a beat is scheduled.
    */
@@ -169,6 +179,7 @@ export class AudioEngine {
     this.currentMeasureIndex = measureIndex;
     this.currentBeatIndex = beatIndex;
     this.updateCurrentPattern();
+    this.subStep = 0;
 
     if (this.bpmMode === 'multiplier') {
       const currentMeasure = this.measures[this.currentMeasureIndex];
@@ -214,6 +225,7 @@ export class AudioEngine {
     this.updateCurrentPattern();
     this.pendingBeats = [];
     this.pendingMeasureChanges = [];
+    this.subStep = 0;
 
     // Schedule the first notes immediately
     this.scheduler();
@@ -315,7 +327,9 @@ export class AudioEngine {
   private scheduleNote(time: number): void {
     if (!this.audioContext || this.measures.length === 0) return;
 
-    const soundType = this.currentPattern[this.currentBeatIndex] || 'A';
+    const soundType = (this.subdivisionMode === '16' && this.subStep === 1)
+      ? 'B'
+      : (this.currentPattern[this.currentBeatIndex] || 'A');
 
     if (this.soundMode === 'wav' && this.bufferA && this.bufferB) {
       const source = this.audioContext.createBufferSource();
@@ -352,14 +366,16 @@ export class AudioEngine {
       }
     }
 
-    // Queue beat event for rAF-based UI dispatch
-    const event: BeatEvent = {
-      measureIndex: this.currentMeasureIndex,
-      beatIndex: this.currentBeatIndex,
-      soundType,
-      time,
-    };
-    this.pendingBeats.push({ time, event });
+    if (this.subdivisionMode !== '16' || this.subStep === 0) {
+      // Queue beat event for rAF-based UI dispatch
+      const event: BeatEvent = {
+        measureIndex: this.currentMeasureIndex,
+        beatIndex: this.currentBeatIndex,
+        soundType,
+        time,
+      };
+      this.pendingBeats.push({ time, event });
+    }
   }
 
   /**
@@ -369,36 +385,48 @@ export class AudioEngine {
     if (this.measures.length === 0) return;
 
     const currentMeasure = this.measures[this.currentMeasureIndex];
-    const subBeatDuration = getSubBeatDuration(this.bpm, currentMeasure.denominator);
+    let subBeatDuration = getSubBeatDuration(this.bpm, currentMeasure.denominator);
+    if (this.subdivisionMode === '16') {
+      subBeatDuration = subBeatDuration / 2;
+    }
 
     this.nextNoteTime += subBeatDuration;
-    this.currentBeatIndex++;
 
-    // Check if we've gone past the end of the current measure
-    if (this.currentBeatIndex >= this.currentPattern.length) {
-      this.currentBeatIndex = 0;
-      this.currentMeasureIndex++;
+    if (this.subdivisionMode === '16') {
+      this.subStep = (this.subStep + 1) % 2;
+    } else {
+      this.subStep = 0;
+    }
 
-      // Loop back to the beginning if we've gone past all measures
-      if (this.currentMeasureIndex >= this.measures.length) {
-        this.currentMeasureIndex = 0;
+    if (this.subStep === 0) {
+      this.currentBeatIndex++;
+
+      // Check if we've gone past the end of the current measure
+      if (this.currentBeatIndex >= this.currentPattern.length) {
+        this.currentBeatIndex = 0;
+        this.currentMeasureIndex++;
+
+        // Loop back to the beginning if we've gone past all measures
+        if (this.currentMeasureIndex >= this.measures.length) {
+          this.currentMeasureIndex = 0;
+        }
+
+        this.updateCurrentPattern();
+
+        // Auto-snap or scale BPM when the measure changes
+        const newMeasure = this.measures[this.currentMeasureIndex];
+        if (this.bpmMode === 'multiplier') {
+          this.bpm = Math.max(20, Math.min(400, Math.round(newMeasure.target_bpm * this.multiplier)));
+        } else {
+          // In 'fixed' mode, we do NOT change this.bpm. It remains at the fixed user-set value.
+        }
+
+        // Queue measure change event for rAF-based UI dispatch
+        this.pendingMeasureChanges.push({
+          time: this.nextNoteTime,
+          measureIndex: this.currentMeasureIndex,
+        });
       }
-
-      this.updateCurrentPattern();
-
-      // Auto-snap or scale BPM when the measure changes
-      const newMeasure = this.measures[this.currentMeasureIndex];
-      if (this.bpmMode === 'multiplier') {
-        this.bpm = Math.max(20, Math.min(400, Math.round(newMeasure.target_bpm * this.multiplier)));
-      } else {
-        // In 'fixed' mode, we do NOT change this.bpm. It remains at the fixed user-set value.
-      }
-
-      // Queue measure change event for rAF-based UI dispatch
-      this.pendingMeasureChanges.push({
-        time: this.nextNoteTime,
-        measureIndex: this.currentMeasureIndex,
-      });
     }
   }
 

@@ -82,6 +82,24 @@ function App() {
                 電子音2
               </button>
             </div>
+            <div className="subdivision-selector" id="subdivision-selector">
+              <button
+                className={`subdivision-btn ${metronome.subdivisionMode === '8' ? 'active' : ''}`}
+                onClick={() => metronome.setSubdivisionMode('8')}
+                id="subdivision-8-button"
+                aria-label="8分音符に切り替え"
+              >
+                8分
+              </button>
+              <button
+                className={`subdivision-btn ${metronome.subdivisionMode === '16' ? 'active' : ''}`}
+                onClick={() => metronome.setSubdivisionMode('16')}
+                id="subdivision-16-button"
+                aria-label="16分音符に切り替え"
+              >
+                16分
+              </button>
+            </div>
             <SongLoader
               onSongLoaded={handleSongLoaded}
               currentSongTitle={song?.title || null}
