@@ -60,8 +60,13 @@ export class AudioEngine {
   private pendingMeasureChanges: { time: number; measureIndex: number }[] = [];
 
   // Latency compensation (in seconds) to align visual flash with audio arrival.
-  // We dispatch UI events slightly before the actual audio time to account for React render + screen refresh delay.
-  private readonly UI_LATENCY_COMPENSATION = 0.015; // 15ms early
+  // The visual pipeline has multiple delay stages:
+  //   1. rAF polling:       ~8-16ms (depends on monitor refresh rate)
+  //   2. React re-render:   ~5-10ms (setState batching + virtual DOM diff)
+  //   3. Browser paint:     ~1-4ms  (composite + paint)
+  // Total: ~15-30ms. We dispatch UI events this far ahead of actual audio time
+  // so the visual flash appears synchronised with the sound.
+  private readonly UI_LATENCY_COMPENSATION = 0.040; // 40ms early
 
   /**
    * Initialize the AudioContext. Must be called from a user gesture on iOS.
