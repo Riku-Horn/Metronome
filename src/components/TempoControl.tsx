@@ -221,7 +221,7 @@ export function TempoControl({
             type="range"
             className="tempo-slider multiplier-slider"
             min="0.25"
-            max="3.00"
+            max="1.50"
             step="0.01"
             value={multiplier}
             onChange={(e) => handleMultiplierChange(parseFloat(e.target.value))}
