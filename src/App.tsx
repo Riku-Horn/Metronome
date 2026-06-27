@@ -100,6 +100,14 @@ function App() {
                 16分
               </button>
             </div>
+            <button
+              className={`countin-toggle-btn ${metronome.countInEnabled ? 'active' : ''}`}
+              onClick={() => metronome.setCountInEnabled(!metronome.countInEnabled)}
+              id="countin-toggle-button"
+              aria-label={metronome.countInEnabled ? 'カウントをOFFにする' : 'カウントをONにする'}
+            >
+              カウント{metronome.countInEnabled ? 'ON' : 'OFF'}
+            </button>
             <SongLoader
               onSongLoaded={handleSongLoaded}
               currentSongTitle={song?.title || null}
@@ -121,6 +129,9 @@ function App() {
             currentMeasure={currentMeasure}
             currentBeat={metronome.currentBeat}
             isPlaying={metronome.isPlaying}
+            isCountIn={metronome.isCountIn}
+            countInBeat={metronome.countInBeat}
+            countInTotal={metronome.countInTotal}
           />
         </div>
 

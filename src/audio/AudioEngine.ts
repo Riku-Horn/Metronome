@@ -46,6 +46,16 @@ export class AudioEngine {
   private subdivisionMode: '8' | '16' = '8';
   private subStep = 0;
 
+  // Count-in state
+  private countInEnabled = true;
+  private isCountIn = false;
+  private countInBeatsRemaining = 0;
+  private countInBeatNumber = 0;       // raw 1-based pattern beat counter
+  private countInPattern: ('A' | 'B')[] = [];
+  private countInBeatIndex = 0;
+  private countInSubStep = 0;
+  private countInDisplayInterval = 1;  // 1 for x/8, 2 for x/4 (quarter-note grouping)
+
   // Song data
   private measures: MeasureData[] = [];
   private currentPattern: ('A' | 'B')[] = [];
@@ -53,11 +63,15 @@ export class AudioEngine {
   // Callbacks
   private onBeat: ((event: BeatEvent) => void) | null = null;
   private onMeasureChange: ((measureIndex: number) => void) | null = null;
+  private onCountInBeat: ((beatNumber: number, totalBeats: number) => void) | null = null;
+  private onCountInEnd: (() => void) | null = null;
 
   // Pending UI events queue — events are scheduled ahead of time and
   // dispatched when audioContext.currentTime reaches their time.
   private pendingBeats: { time: number; event: BeatEvent }[] = [];
   private pendingMeasureChanges: { time: number; measureIndex: number }[] = [];
+  private pendingCountInBeats: { time: number; beatNumber: number; totalBeats: number }[] = [];
+  private pendingCountInEnd: { time: number }[] = [];
 
   // Latency compensation (in seconds) to align visual flash with audio arrival.
   // The visual pipeline has multiple delay stages:
@@ -112,6 +126,14 @@ export class AudioEngine {
 
   getSoundMode(): 'synth' | 'wav' {
     return this.soundMode;
+  }
+
+  setCountInEnabled(enabled: boolean): void {
+    this.countInEnabled = enabled;
+  }
+
+  getCountInEnabled(): boolean {
+    return this.countInEnabled;
   }
 
   /**
@@ -177,6 +199,27 @@ export class AudioEngine {
   }
 
   /**
+   * Set count-in beat callback — called each time a count-in beat fires.
+   */
+  setOnCountInBeat(callback: (beatNumber: number, totalBeats: number) => void): void {
+    this.onCountInBeat = callback;
+  }
+
+  /**
+   * Set count-in end callback — called when count-in finishes.
+   */
+  setOnCountInEnd(callback: () => void): void {
+    this.onCountInEnd = callback;
+  }
+
+  /**
+   * Check if currently in count-in phase.
+   */
+  getIsCountIn(): boolean {
+    return this.isCountIn;
+  }
+
+  /**
    * Jump to a specific measure and beat.
    */
   jumpTo(measureIndex: number, beatIndex = 0): void {
@@ -230,7 +273,25 @@ export class AudioEngine {
     this.updateCurrentPattern();
     this.pendingBeats = [];
     this.pendingMeasureChanges = [];
+    this.pendingCountInBeats = [];
+    this.pendingCountInEnd = [];
     this.subStep = 0;
+
+    // Set up count-in: play 1 measure of the opening pattern
+    if (this.countInEnabled && this.measures.length > 0) {
+      const openingMeasure = this.measures[this.currentMeasureIndex];
+      this.countInPattern = getBeatPattern(openingMeasure);
+      const beatsPerMeasure = this.countInPattern.length;
+      this.countInBeatsRemaining = beatsPerMeasure; // 1 measure of count-in
+      this.countInBeatNumber = 0;
+      this.countInBeatIndex = 0;
+      this.countInSubStep = 0;
+      // For x/4 time, display count per quarter note (every 2 eighth notes)
+      this.countInDisplayInterval = openingMeasure.denominator === 4 ? 2 : 1;
+      this.isCountIn = true;
+    } else {
+      this.isCountIn = false;
+    }
 
     // Schedule the first notes immediately
     this.scheduler();
@@ -249,6 +310,8 @@ export class AudioEngine {
    */
   stop(): void {
     this.isPlaying = false;
+    this.isCountIn = false;
+    this.countInBeatsRemaining = 0;
     if (this.schedulerTimer !== null) {
       clearInterval(this.schedulerTimer);
       this.schedulerTimer = null;
@@ -259,6 +322,8 @@ export class AudioEngine {
     }
     this.pendingBeats = [];
     this.pendingMeasureChanges = [];
+    this.pendingCountInBeats = [];
+    this.pendingCountInEnd = [];
   }
 
   /**
@@ -291,8 +356,13 @@ export class AudioEngine {
     const deadline = this.audioContext.currentTime + this.LOOKAHEAD;
 
     while (this.nextNoteTime < deadline) {
-      this.scheduleNote(this.nextNoteTime);
-      this.advanceNote();
+      if (this.isCountIn) {
+        this.scheduleCountInNote(this.nextNoteTime);
+        this.advanceCountIn();
+      } else {
+        this.scheduleNote(this.nextNoteTime);
+        this.advanceNote();
+      }
     }
   }
 
@@ -307,6 +377,18 @@ export class AudioEngine {
       if (!this.isPlaying || !this.audioContext) return;
 
       const now = this.audioContext.currentTime;
+
+      // Dispatch pending count-in beat events
+      while (this.pendingCountInBeats.length > 0 && this.pendingCountInBeats[0].time <= now + this.UI_LATENCY_COMPENSATION) {
+        const entry = this.pendingCountInBeats.shift()!;
+        if (this.onCountInBeat) this.onCountInBeat(entry.beatNumber, entry.totalBeats);
+      }
+
+      // Dispatch pending count-in end events
+      while (this.pendingCountInEnd.length > 0 && this.pendingCountInEnd[0].time <= now + this.UI_LATENCY_COMPENSATION) {
+        this.pendingCountInEnd.shift();
+        if (this.onCountInEnd) this.onCountInEnd();
+      }
 
       // Dispatch pending beat events whose time has arrived (compensated)
       while (this.pendingBeats.length > 0 && this.pendingBeats[0].time <= now + this.UI_LATENCY_COMPENSATION) {
@@ -327,14 +409,74 @@ export class AudioEngine {
   }
 
   /**
-   * Schedule a single note at the given audio time.
+   * Schedule a count-in note. Uses the same sound engine but emits
+   * count-in specific UI events instead of regular beat events.
    */
-  private scheduleNote(time: number): void {
-    if (!this.audioContext || this.measures.length === 0) return;
+  private scheduleCountInNote(time: number): void {
+    if (!this.audioContext) return;
 
-    const soundType = (this.subdivisionMode === '16' && this.subStep === 1)
+    const soundType = (this.subdivisionMode === '16' && this.countInSubStep === 1)
       ? 'B'
-      : (this.currentPattern[this.currentBeatIndex] || 'A');
+      : (this.countInPattern[this.countInBeatIndex] || 'A');
+
+    // Play a sound (same logic as regular notes)
+    this.playSoundAtTime(time, soundType);
+
+    // Only emit UI events on main beats (not subdivisions)
+    if (this.countInSubStep === 0) {
+      this.countInBeatNumber++;
+      // For x/4 time, only emit display event on quarter-note boundaries
+      if ((this.countInBeatNumber - 1) % this.countInDisplayInterval === 0) {
+        const displayNumber = Math.ceil(this.countInBeatNumber / this.countInDisplayInterval);
+        const totalDisplayBeats = Math.ceil(this.countInPattern.length / this.countInDisplayInterval);
+        this.pendingCountInBeats.push({ time, beatNumber: displayNumber, totalBeats: totalDisplayBeats });
+      }
+    }
+  }
+
+  /**
+   * Advance the count-in to the next note.
+   */
+  private advanceCountIn(): void {
+    if (this.measures.length === 0) return;
+
+    const currentMeasure = this.measures[this.currentMeasureIndex];
+    let subBeatDuration = getSubBeatDuration(this.bpm, currentMeasure.denominator);
+    if (this.subdivisionMode === '16') {
+      subBeatDuration = subBeatDuration / 2;
+    }
+
+    this.nextNoteTime += subBeatDuration;
+
+    if (this.subdivisionMode === '16') {
+      this.countInSubStep = (this.countInSubStep + 1) % 2;
+    } else {
+      this.countInSubStep = 0;
+    }
+
+    if (this.countInSubStep === 0) {
+      this.countInBeatsRemaining--;
+      this.countInBeatIndex++;
+
+      // Wrap around the pattern for the 2nd measure
+      if (this.countInBeatIndex >= this.countInPattern.length) {
+        this.countInBeatIndex = 0;
+      }
+
+      // Check if count-in is finished
+      if (this.countInBeatsRemaining <= 0) {
+        this.isCountIn = false;
+        this.pendingCountInEnd.push({ time: this.nextNoteTime });
+      }
+    }
+  }
+
+  /**
+   * Play a sound (oscillator or WAV buffer) at the given time.
+   * Shared by both count-in and regular playback.
+   */
+  private playSoundAtTime(time: number, soundType: 'A' | 'B'): void {
+    if (!this.audioContext) return;
 
     if (this.soundMode === 'wav' && this.bufferA && this.bufferB) {
       const source = this.audioContext.createBufferSource();
@@ -346,7 +488,6 @@ export class AudioEngine {
       gain.connect(this.audioContext.destination);
       source.start(time);
     } else {
-      // Create oscillator for this beat
       const osc = this.audioContext.createOscillator();
       const gain = this.audioContext.createGain();
 
@@ -370,6 +511,19 @@ export class AudioEngine {
         osc.stop(time + this.SUB_DURATION);
       }
     }
+  }
+
+  /**
+   * Schedule a single note at the given audio time.
+   */
+  private scheduleNote(time: number): void {
+    if (!this.audioContext || this.measures.length === 0) return;
+
+    const soundType = (this.subdivisionMode === '16' && this.subStep === 1)
+      ? 'B'
+      : (this.currentPattern[this.currentBeatIndex] || 'A');
+
+    this.playSoundAtTime(time, soundType);
 
     if (this.subdivisionMode !== '16' || this.subStep === 0) {
       // Queue beat event for rAF-based UI dispatch

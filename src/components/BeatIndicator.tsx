@@ -6,9 +6,12 @@ interface BeatIndicatorProps {
   currentMeasure: MeasureData | null;
   currentBeat: BeatEvent | null;
   isPlaying: boolean;
+  isCountIn?: boolean;
+  countInBeat?: number;
+  countInTotal?: number;
 }
 
-export function BeatIndicator({ currentMeasure, currentBeat, isPlaying }: BeatIndicatorProps) {
+export function BeatIndicator({ currentMeasure, currentBeat, isPlaying, isCountIn, countInBeat, countInTotal: _countInTotal }: BeatIndicatorProps) {
   const pattern = useMemo(() => {
     if (!currentMeasure) return [];
     return getBeatPattern(currentMeasure);
@@ -33,6 +36,11 @@ export function BeatIndicator({ currentMeasure, currentBeat, isPlaying }: BeatIn
     return boundaries;
   }, [currentMeasure, pattern.length]);
 
+  // Compute the count-in display number (1-indexed within the measure)
+  const countInDisplayNumber = isCountIn && countInBeat
+    ? countInBeat
+    : 0;
+
   if (!currentMeasure || pattern.length === 0) {
     return (
       <div className="beat-indicator" id="beat-indicator">
@@ -47,9 +55,9 @@ export function BeatIndicator({ currentMeasure, currentBeat, isPlaying }: BeatIn
 
   return (
     <div className="beat-indicator" id="beat-indicator">
-      <div className="beat-dots-container">
+      <div className="beat-dots-container" style={{ position: 'relative' }}>
         {pattern.map((type, index) => {
-          const isActive = isPlaying && currentBeat !== null && currentBeat.beatIndex === index;
+          const isActive = isPlaying && !isCountIn && currentBeat !== null && currentBeat.beatIndex === index;
           const isGroupStart = groupBoundaries.has(index);
 
           return (
@@ -67,8 +75,16 @@ export function BeatIndicator({ currentMeasure, currentBeat, isPlaying }: BeatIn
             </div>
           );
         })}
+
+        {/* Count-in overlay */}
+        {isCountIn && countInBeat !== undefined && countInBeat > 0 && (
+          <div className="count-in-overlay">
+            <span className="count-in-number">{countInDisplayNumber}</span>
+          </div>
+        )}
       </div>
 
+      {/* Pattern description */}
       {/* Pattern description */}
       <div className="beat-pattern-info">
         {currentMeasure.numerator}/{currentMeasure.denominator}

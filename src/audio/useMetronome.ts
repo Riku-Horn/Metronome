@@ -14,6 +14,12 @@ interface UseMetronomeReturn {
   currentBeat: BeatEvent | null;
   /** Whether the AudioContext has been initialized */
   isInitialized: boolean;
+  /** Whether we are in the count-in phase */
+  isCountIn: boolean;
+  /** Current count-in beat number (1-based, resets each measure) */
+  countInBeat: number;
+  /** Total count-in beats (across both measures) */
+  countInTotal: number;
 
   /** Initialize AudioContext (must be called from user gesture on iOS) */
   initialize: () => Promise<void>;
@@ -45,6 +51,10 @@ interface UseMetronomeReturn {
   subdivisionMode: '8' | '16';
   /** Set subdivision mode */
   setSubdivisionMode: (mode: '8' | '16') => void;
+  /** Whether count-in is enabled */
+  countInEnabled: boolean;
+  /** Toggle count-in on/off */
+  setCountInEnabled: (enabled: boolean) => void;
 }
 
 export function useMetronome(initialBpm = 120): UseMetronomeReturn {
@@ -63,6 +73,10 @@ export function useMetronome(initialBpm = 120): UseMetronomeReturn {
   const [bpmMode, setBpmModeState] = useState<'fixed' | 'multiplier'>('multiplier');
   const [multiplier, setMultiplierState] = useState(1.00);
   const [subdivisionMode, setSubdivisionModeState] = useState<'8' | '16'>('8');
+  const [countInEnabled, setCountInEnabledState] = useState(true);
+  const [isCountIn, setIsCountIn] = useState(false);
+  const [countInBeat, setCountInBeat] = useState(0);
+  const [countInTotal, setCountInTotal] = useState(0);
 
   // Create engine on mount
   useEffect(() => {
@@ -88,6 +102,18 @@ export function useMetronome(initialBpm = 120): UseMetronomeReturn {
       }));
       // Sync BPM state with engine (auto-snapped to target_bpm)
       setBpmState(engine.getBpm());
+    });
+
+    engine.setOnCountInBeat((beatNumber: number, totalBeats: number) => {
+      setIsCountIn(true);
+      setCountInBeat(beatNumber);
+      setCountInTotal(totalBeats);
+    });
+
+    engine.setOnCountInEnd(() => {
+      setIsCountIn(false);
+      setCountInBeat(0);
+      setCountInTotal(0);
     });
 
     return () => {
@@ -119,6 +145,9 @@ export function useMetronome(initialBpm = 120): UseMetronomeReturn {
       engineRef.current.stop();
       setIsPlaying(false);
       setCurrentBeat(null);
+      setIsCountIn(false);
+      setCountInBeat(0);
+      setCountInTotal(0);
       setPosition(prev => ({ ...prev, isPlaying: false }));
     }
   }, []);
@@ -234,12 +263,22 @@ export function useMetronome(initialBpm = 120): UseMetronomeReturn {
     }
   }, []);
 
+  const setCountInEnabled = useCallback((enabled: boolean) => {
+    setCountInEnabledState(enabled);
+    if (engineRef.current) {
+      engineRef.current.setCountInEnabled(enabled);
+    }
+  }, []);
+
   return {
     isPlaying,
     bpm,
     position,
     currentBeat,
     isInitialized,
+    isCountIn,
+    countInBeat,
+    countInTotal,
     initialize,
     togglePlay,
     play,
@@ -255,5 +294,7 @@ export function useMetronome(initialBpm = 120): UseMetronomeReturn {
     setMultiplier,
     subdivisionMode,
     setSubdivisionMode,
+    countInEnabled,
+    setCountInEnabled,
   };
 }
