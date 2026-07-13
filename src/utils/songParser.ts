@@ -2,6 +2,75 @@ import type { MeasureData, SongData } from '../types/song';
 
 const STORAGE_KEY = 'metronome_song_data';
 
+/** Maximum allowed repeat count per block to prevent memory exhaustion */
+const MAX_REPEAT = 1000;
+
+/** Maximum total measures allowed to prevent memory exhaustion */
+const MAX_TOTAL_MEASURES = 10000;
+
+/** Keys that could cause prototype pollution */
+const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
+
+/**
+ * Check if an object contains keys that could cause prototype pollution.
+ */
+function hasDangerousKeys(obj: Record<string, unknown>): boolean {
+  for (const key of Object.keys(obj)) {
+    if (DANGEROUS_KEYS.has(key)) return true;
+  }
+  return false;
+}
+
+/**
+ * Validate that a parsed object has valid MeasureData fields.
+ * Rejects objects with prototype-pollution keys and non-finite/non-positive values.
+ */
+function isValidMeasureData(m: unknown): m is MeasureData {
+  if (typeof m !== 'object' || m === null || Array.isArray(m)) return false;
+  const obj = m as Record<string, unknown>;
+  if (hasDangerousKeys(obj)) return false;
+  return (
+    typeof obj.measure === 'number' &&
+    typeof obj.section === 'string' &&
+    typeof obj.numerator === 'number' &&
+    typeof obj.denominator === 'number' &&
+    typeof obj.target_bpm === 'number' &&
+    Number.isFinite(obj.measure) &&
+    Number.isFinite(obj.numerator) &&
+    Number.isFinite(obj.denominator) &&
+    Number.isFinite(obj.target_bpm) &&
+    obj.numerator > 0 &&
+    obj.denominator > 0 &&
+    obj.target_bpm > 0
+  );
+}
+
+/**
+ * Validate that a parsed object is a valid block-format entry.
+ * Rejects objects with prototype-pollution keys, non-finite values, and excessive repeat counts.
+ */
+function isValidBlockEntry(b: unknown): boolean {
+  if (typeof b !== 'object' || b === null || Array.isArray(b)) return false;
+  const obj = b as Record<string, unknown>;
+  if (hasDangerousKeys(obj)) return false;
+  return (
+    typeof obj.repeat === 'number' &&
+    typeof obj.section === 'string' &&
+    typeof obj.numerator === 'number' &&
+    typeof obj.denominator === 'number' &&
+    typeof obj.target_bpm === 'number' &&
+    Number.isFinite(obj.repeat) &&
+    Number.isFinite(obj.numerator) &&
+    Number.isFinite(obj.denominator) &&
+    Number.isFinite(obj.target_bpm) &&
+    obj.repeat > 0 &&
+    obj.repeat <= MAX_REPEAT &&
+    obj.numerator > 0 &&
+    obj.denominator > 0 &&
+    obj.target_bpm > 0
+  );
+}
+
 /**
  * Generate the beat pattern for a given measure.
  * - 4/4 time: 8 eighth notes → [A, B, A, B, A, B, A, B]
@@ -160,6 +229,11 @@ function expandBlocks(blocks: Record<string, unknown>[]): MeasureData[] {
       });
 
       m++;
+
+      // Safety: prevent memory exhaustion from malicious data
+      if (measures.length > MAX_TOTAL_MEASURES) {
+        return measures;
+      }
     }
   }
 
@@ -182,9 +256,16 @@ export function parseSongJson(json: string): SongData | { error: string } {
 
     if (Array.isArray(parsed)) {
       rawEntries = parsed;
-    } else if (parsed.measures && Array.isArray(parsed.measures)) {
-      rawEntries = parsed.measures;
-      title = parsed.title || title;
+    } else if (typeof parsed === 'object' && parsed !== null) {
+      if (hasDangerousKeys(parsed as Record<string, unknown>)) {
+        return { error: 'Input contains disallowed keys' };
+      }
+      if (Array.isArray(parsed.measures)) {
+        rawEntries = parsed.measures;
+        title = typeof parsed.title === 'string' ? parsed.title : title;
+      } else {
+        return { error: 'Invalid format: expected an array or object with "measures" array' };
+      }
     } else {
       return { error: 'Invalid format: expected an array or object with "measures" array' };
     }
@@ -192,27 +273,31 @@ export function parseSongJson(json: string): SongData | { error: string } {
     // Detect and expand block format if needed
     let measures: MeasureData[];
     if (isBlockFormat(rawEntries)) {
-      // Validate block entries
+      // Validate block entries with strict type checking (includes prototype pollution check)
       for (let i = 0; i < rawEntries.length; i++) {
-        const b = rawEntries[i];
-        if (!b.repeat || !b.section || !b.numerator || !b.denominator || !b.target_bpm) {
+        if (!isValidBlockEntry(rawEntries[i])) {
           return {
-            error: `Block ${i + 1} is missing required fields (repeat, section, numerator, denominator, target_bpm)`,
+            error: `Block ${i + 1} has missing or invalid fields (repeat, section, numerator, denominator, target_bpm)`,
           };
         }
       }
       measures = expandBlocks(rawEntries);
+      if (measures.length > MAX_TOTAL_MEASURES) {
+        return { error: `Total measures (${measures.length}) exceed maximum of ${MAX_TOTAL_MEASURES}` };
+      }
     } else {
-      measures = rawEntries as unknown as MeasureData[];
-      // Validate per-measure entries
-      for (let i = 0; i < measures.length; i++) {
-        const m = measures[i];
-        if (!m.measure || !m.section || !m.numerator || !m.denominator || !m.target_bpm) {
+      // Validate per-measure entries with strict type checking (includes prototype pollution check)
+      for (let i = 0; i < rawEntries.length; i++) {
+        if (!isValidMeasureData(rawEntries[i])) {
           return {
-            error: `Measure ${i + 1} is missing required fields (measure, section, numerator, denominator, target_bpm)`,
+            error: `Measure ${i + 1} has missing or invalid fields (measure, section, numerator, denominator, target_bpm)`,
           };
         }
       }
+      if (rawEntries.length > MAX_TOTAL_MEASURES) {
+        return { error: `Total measures (${rawEntries.length}) exceed maximum of ${MAX_TOTAL_MEASURES}` };
+      }
+      measures = rawEntries as unknown as MeasureData[];
     }
 
     // Auto-compute sectionMeasure for all measures
@@ -243,7 +328,17 @@ export function loadSongFromStorage(): SongData | null {
     const data = localStorage.getItem(STORAGE_KEY);
     if (!data) return null;
     const parsed = JSON.parse(data);
-    if (parsed && parsed.measures && Array.isArray(parsed.measures)) {
+    if (
+      parsed &&
+      typeof parsed === 'object' &&
+      !Array.isArray(parsed) &&
+      typeof parsed.title === 'string' &&
+      Array.isArray(parsed.measures)
+    ) {
+      // Validate each measure to prevent corrupted/tampered data
+      for (const m of parsed.measures) {
+        if (!isValidMeasureData(m)) return null;
+      }
       return parsed as SongData;
     }
     return null;

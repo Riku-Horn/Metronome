@@ -1,7 +1,11 @@
 // Service Worker for 変拍子メトロノーム PWA
 // Strategy: Network-first with cache fallback for offline support
 
-const CACHE_NAME = 'metronome-v1';
+// IMPORTANT: Increment CACHE_VERSION on each deployment to invalidate old caches.
+// Failing to update will cause users to continue running stale cached code.
+// Consider using a build tool (e.g., Workbox) to automate cache versioning.
+const CACHE_VERSION = 2;
+const CACHE_NAME = `metronome-v${CACHE_VERSION}`;
 
 // Core app shell files to pre-cache on install
 const PRECACHE_URLS = [
@@ -50,6 +54,11 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     fetch(event.request)
       .then((response) => {
+        // Only cache successful responses to prevent cache poisoning with error pages
+        if (!response || !response.ok) {
+          return response;
+        }
+
         // Clone response before caching (response body can only be consumed once)
         const responseClone = response.clone();
         caches.open(CACHE_NAME).then((cache) => {
