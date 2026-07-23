@@ -67,7 +67,7 @@
   { "repeat": 1, "section": "K", "numerator": 7, "denominator": 8, "target_bpm": 126 },
   { "repeat": 1, "section": "K", "numerator": 3, "denominator": 4, "target_bpm": 126 },
   { "repeat": 1, "section": "K", "numerator": 7, "denominator": 8, "target_bpm": 126 },
-  { "repeat": 1, "section": "K", "numerator": 3, "denominator": 4, "target_bpm": 126 },
+  { "repeat": 1, "section": "K", "numerator": 4, "denominator": 4, "target_bpm": 126 },
   { "repeat": 1, "section": "K", "numerator": 7, "denominator": 8, "target_bpm": 126 },
   { "repeat": 1, "section": "K", "numerator": 3, "denominator": 4, "target_bpm": 126 },
   { "repeat": 1, "section": "K", "numerator": 7, "denominator": 8, "target_bpm": 126 },
