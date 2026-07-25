@@ -55,6 +55,12 @@ interface UseMetronomeReturn {
   countInEnabled: boolean;
   /** Toggle count-in on/off */
   setCountInEnabled: (enabled: boolean) => void;
+  /** User manual latency offset in milliseconds */
+  latencyOffsetMs: number;
+  /** Set user manual latency offset */
+  setLatencyOffsetMs: (offsetMs: number) => void;
+  /** Direct reference to the AudioEngine (for sync layer) */
+  engineRef: React.RefObject<AudioEngine | null>;
 }
 
 export function useMetronome(initialBpm = 120): UseMetronomeReturn {
@@ -263,10 +269,19 @@ export function useMetronome(initialBpm = 120): UseMetronomeReturn {
     }
   }, []);
 
+  const [latencyOffsetMs, setLatencyOffsetMsState] = useState(0);
+
   const setCountInEnabled = useCallback((enabled: boolean) => {
     setCountInEnabledState(enabled);
     if (engineRef.current) {
       engineRef.current.setCountInEnabled(enabled);
+    }
+  }, []);
+
+  const setLatencyOffsetMs = useCallback((offsetMs: number) => {
+    setLatencyOffsetMsState(offsetMs);
+    if (engineRef.current) {
+      engineRef.current.setLatencyOffsetMs(offsetMs);
     }
   }, []);
 
@@ -296,5 +311,8 @@ export function useMetronome(initialBpm = 120): UseMetronomeReturn {
     setSubdivisionMode,
     countInEnabled,
     setCountInEnabled,
+    latencyOffsetMs,
+    setLatencyOffsetMs,
+    engineRef,
   };
 }

@@ -82,6 +82,27 @@ export class AudioEngine {
   // so the visual flash appears synchronised with the sound.
   private readonly UI_LATENCY_COMPENSATION = 0.040; // 40ms early
 
+  // Hardware/User latency compensation offset in milliseconds
+  private latencyOffsetMs = 0;
+
+  setLatencyOffsetMs(offsetMs: number): void {
+    this.latencyOffsetMs = offsetMs;
+  }
+
+  getLatencyOffsetMs(): number {
+    return this.latencyOffsetMs;
+  }
+
+  /**
+   * Get total estimated hardware output latency in seconds.
+   */
+  private getHardwareLatency(): number {
+    if (!this.audioContext) return 0;
+    const ctx = this.audioContext as unknown as { baseLatency?: number; outputLatency?: number };
+    const base = ctx.baseLatency || 0;
+    const output = ctx.outputLatency || 0;
+    return base + output;
+  }
   /**
    * Initialize the AudioContext. Must be called from a user gesture on iOS.
    */
@@ -302,6 +323,71 @@ export class AudioEngine {
     }, this.SCHEDULE_INTERVAL);
 
     // Start the rAF loop (dispatches UI events in sync with audio time)
+    this.startUiLoop();
+  }
+
+  /**
+   * Start playing at a specific wall-clock time (performance.now() basis).
+   * Used for multi-device sync: all devices schedule their start to the
+   * same wall-clock moment, achieving sample-accurate synchronisation.
+   *
+   * @param wallClockStartTime - The performance.now() value at which to start
+   * @param measureIndex - Optional measure to start from
+   * @param beatIndex - Optional beat to start from
+   */
+  async startAt(wallClockStartTime: number, measureIndex?: number, beatIndex?: number): Promise<void> {
+    if (this.isPlaying) return;
+    if (!this.audioContext) await this.init();
+    if (!this.audioContext) return;
+
+    if (this.audioContext.state === 'suspended') {
+      await this.audioContext.resume();
+    }
+
+    // Jump to requested position if specified
+    if (measureIndex !== undefined) {
+      this.currentMeasureIndex = Math.max(0, Math.min(measureIndex, this.measures.length - 1));
+      this.currentBeatIndex = beatIndex ?? 0;
+      this.updateCurrentPattern();
+
+      if (this.bpmMode === 'multiplier' && this.measures.length > 0) {
+        const currentMeasure = this.measures[this.currentMeasureIndex];
+        this.bpm = Math.max(20, Math.min(400, Math.round(currentMeasure.target_bpm * this.multiplier)));
+      }
+    }
+
+    // Convert wall-clock time to audioContext time.
+    // performance.now() is in ms, audioContext.currentTime is in seconds.
+    const now = performance.now();
+    const delayMs = wallClockStartTime - now;
+    const delaySec = delayMs / 1000;
+
+    // Apply hardware output latency compensation + user manual offset adjustment
+    const hwLatency = this.getHardwareLatency();
+    const userOffsetSec = this.latencyOffsetMs / 1000;
+    const audioStartTime = this.audioContext.currentTime + delaySec - hwLatency + userOffsetSec;
+
+    this.isPlaying = true;
+    this.nextNoteTime = audioStartTime;
+    this.updateCurrentPattern();
+    this.pendingBeats = [];
+    this.pendingMeasureChanges = [];
+    this.pendingCountInBeats = [];
+    this.pendingCountInEnd = [];
+    this.subStep = 0;
+
+    // No count-in in sync mode — start directly
+    this.isCountIn = false;
+
+    // Schedule the first notes
+    this.scheduler();
+
+    // Start the scheduler loop
+    this.schedulerTimer = window.setInterval(() => {
+      this.scheduler();
+    }, this.SCHEDULE_INTERVAL);
+
+    // Start the rAF loop
     this.startUiLoop();
   }
 

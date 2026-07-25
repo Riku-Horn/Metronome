@@ -6,9 +6,10 @@ import { SongSelectorModal } from './SongSelectorModal';
 interface SongLoaderProps {
   onSongLoaded: (song: SongData) => void;
   currentSongTitle: string | null;
+  disabled?: boolean;
 }
 
-export function SongLoader({ onSongLoaded, currentSongTitle }: SongLoaderProps) {
+export function SongLoader({ onSongLoaded, currentSongTitle, disabled }: SongLoaderProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -62,11 +63,11 @@ export function SongLoader({ onSongLoaded, currentSongTitle }: SongLoaderProps) 
     <>
       <div className="song-loader" id="song-loader">
         <div
-          className={`song-loader-dropzone ${isDragging ? 'song-loader-dragging' : ''}`}
-          onDragOver={handleDragOver}
+          className={`song-loader-dropzone ${isDragging ? 'song-loader-dragging' : ''} ${disabled ? 'song-loader-disabled' : ''}`}
+          onDragOver={(e) => !disabled && handleDragOver(e)}
           onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          onClick={() => setShowSelector(true)}
+          onDrop={(e) => !disabled && handleDrop(e)}
+          onClick={() => !disabled && setShowSelector(true)}
         >
           <input
             ref={fileInputRef}
