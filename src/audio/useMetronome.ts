@@ -7,6 +7,7 @@ export interface RepeatConfig {
   startIndex: number;
   endIndex: number;
   countInMeasures: 0 | 1 | 2;
+  countInMode: 'auto' | '3' | '4';
 }
 
 interface UseMetronomeReturn {
@@ -61,6 +62,10 @@ interface UseMetronomeReturn {
   countInEnabled: boolean;
   /** Toggle count-in on/off */
   setCountInEnabled: (enabled: boolean) => void;
+  /** Count-in mode: 'auto' matches measure, '3' = 3 beats, '4' = 4 beats */
+  countInMode: 'auto' | '3' | '4';
+  /** Set count-in mode */
+  setCountInMode: (mode: 'auto' | '3' | '4') => void;
   /** User manual latency offset in milliseconds */
   latencyOffsetMs: number;
   /** Set user manual latency offset */
@@ -70,7 +75,7 @@ interface UseMetronomeReturn {
   /** Current repeat configuration (null if disabled) */
   repeatConfig: RepeatConfig | null;
   /** Set repeat range */
-  setRepeatRange: (startIndex: number, endIndex: number, countInMeasures: 0 | 1 | 2) => void;
+  setRepeatRange: (startIndex: number, endIndex: number, countInMeasures: 0 | 1 | 2, countInMode?: 'auto' | '3' | '4') => void;
   /** Clear repeat range */
   clearRepeatRange: () => void;
   /** Current loaded song reference */
@@ -93,7 +98,8 @@ export function useMetronome(initialBpm = 120): UseMetronomeReturn {
   const [bpmMode, setBpmModeState] = useState<'fixed' | 'multiplier'>('multiplier');
   const [multiplier, setMultiplierState] = useState(1.00);
   const [subdivisionMode, setSubdivisionModeState] = useState<'8' | '16'>('8');
-  const [countInEnabled, setCountInEnabledState] = useState(true);
+  const [countInEnabledState, setCountInEnabledState] = useState(true);
+  const [countInModeState, setCountInModeState] = useState<'auto' | '3' | '4'>('auto');
   const [isCountIn, setIsCountIn] = useState(false);
   const [countInBeat, setCountInBeat] = useState(0);
   const [countInTotal, setCountInTotal] = useState(0);
@@ -293,6 +299,13 @@ export function useMetronome(initialBpm = 120): UseMetronomeReturn {
     }
   }, []);
 
+  const setCountInMode = useCallback((mode: 'auto' | '3' | '4') => {
+    setCountInModeState(mode);
+    if (engineRef.current) {
+      engineRef.current.setCountInMode(mode);
+    }
+  }, []);
+
   const setLatencyOffsetMs = useCallback((offsetMs: number) => {
     setLatencyOffsetMsState(offsetMs);
     if (engineRef.current) {
@@ -300,10 +313,10 @@ export function useMetronome(initialBpm = 120): UseMetronomeReturn {
     }
   }, []);
 
-  const setRepeatRange = useCallback((startIndex: number, endIndex: number, countInMeasures: 0 | 1 | 2) => {
-    setRepeatConfig({ startIndex, endIndex, countInMeasures });
+  const setRepeatRange = useCallback((startIndex: number, endIndex: number, countInMeasures: 0 | 1 | 2, countInMode: 'auto' | '3' | '4' = 'auto') => {
+    setRepeatConfig({ startIndex, endIndex, countInMeasures, countInMode });
     if (engineRef.current) {
-      engineRef.current.setRepeatRange(startIndex, endIndex, countInMeasures);
+      engineRef.current.setRepeatRange(startIndex, endIndex, countInMeasures, countInMode);
     }
   }, []);
 
@@ -338,8 +351,10 @@ export function useMetronome(initialBpm = 120): UseMetronomeReturn {
     setMultiplier,
     subdivisionMode,
     setSubdivisionMode,
-    countInEnabled,
+    countInEnabled: countInEnabledState,
     setCountInEnabled,
+    countInMode: countInModeState,
+    setCountInMode,
     latencyOffsetMs,
     setLatencyOffsetMs,
     engineRef,

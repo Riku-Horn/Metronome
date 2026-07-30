@@ -6,8 +6,8 @@ interface RepeatSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   song: SongData | null;
-  currentRepeat: { startIndex: number; endIndex: number; countInMeasures: 0 | 1 | 2 } | null;
-  onSetRepeat: (startIndex: number, endIndex: number, countInMeasures: 0 | 1 | 2) => void;
+  currentRepeat: { startIndex: number; endIndex: number; countInMeasures: 0 | 1 | 2; countInMode: 'auto' | '3' | '4' } | null;
+  onSetRepeat: (startIndex: number, endIndex: number, countInMeasures: 0 | 1 | 2, countInMode: 'auto' | '3' | '4') => void;
   onClearRepeat: () => void;
 }
 
@@ -25,6 +25,7 @@ export function RepeatSettingsModal({
   const [endSection, setEndSection] = useState('');
   const [endMeasureIdx, setEndMeasureIdx] = useState(0);
   const [countInMeasures, setCountInMeasures] = useState<0 | 1 | 2>(0);
+  const [countInMode, setCountInMode] = useState<'auto' | '3' | '4'>('auto');
   const [isInitialized, setIsInitialized] = useState(false);
 
   const sections = useMemo(() => {
@@ -44,6 +45,7 @@ export function RepeatSettingsModal({
         setEndSection(endMeasure.section);
         setEndMeasureIdx(currentRepeat.endIndex);
         setCountInMeasures(currentRepeat.countInMeasures ?? 0);
+        setCountInMode(currentRepeat.countInMode ?? 'auto');
       }
     } else {
       // Default: first section, first measure
@@ -58,6 +60,7 @@ export function RepeatSettingsModal({
       setEndSection(firstSection);
       setEndMeasureIdx(lastIdx >= 0 ? lastIdx : firstIdx);
       setCountInMeasures(0);
+      setCountInMode('auto');
     }
     setIsInitialized(true);
   }
@@ -108,7 +111,7 @@ export function RepeatSettingsModal({
 
   const handleApply = () => {
     if (!isValid) return;
-    onSetRepeat(startMeasureIdx, endMeasureIdx, countInMeasures);
+    onSetRepeat(startMeasureIdx, endMeasureIdx, countInMeasures, countInMode);
     onClose();
   };
 
@@ -269,6 +272,43 @@ export function RepeatSettingsModal({
               </div>
             </div>
           </div>
+
+          {/* Count-in mode (only shown when count-in is enabled) */}
+          {countInMeasures > 0 && (
+            <div className="repeat-modal-section">
+              <div className="repeat-modal-countin-block">
+                <div className="repeat-modal-countin-info">
+                  <h3 className="repeat-modal-section-title">カウントの拍子</h3>
+                  <p className="repeat-modal-countin-desc">
+                    カウントインの拍子を指定します
+                  </p>
+                </div>
+                <div className="repeat-modal-countin-options">
+                  <button
+                    type="button"
+                    className={`repeat-modal-countin-opt ${countInMode === 'auto' ? 'active' : ''}`}
+                    onClick={() => setCountInMode('auto')}
+                  >
+                    開始小節と同じ
+                  </button>
+                  <button
+                    type="button"
+                    className={`repeat-modal-countin-opt ${countInMode === '4' ? 'active' : ''}`}
+                    onClick={() => setCountInMode('4')}
+                  >
+                    4拍
+                  </button>
+                  <button
+                    type="button"
+                    className={`repeat-modal-countin-opt ${countInMode === '3' ? 'active' : ''}`}
+                    onClick={() => setCountInMode('3')}
+                  >
+                    3拍
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Actions */}

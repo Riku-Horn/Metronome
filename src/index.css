@@ -175,31 +175,39 @@ input[type="number"] {
   box-shadow: 0 2px 8px var(--color-accent-cyan-dim);
 }
 
-.countin-toggle-btn {
-  padding: 6px 12px;
-  font-size: 11px;
-  font-weight: 600;
-  color: var(--color-text-secondary);
+.countin-mode-selector {
+  display: flex;
   background: var(--color-bg-tertiary);
   border: 1px solid var(--color-border);
   border-radius: 10px;
+  padding: 2px;
+  gap: 2px;
+  align-self: center;
+}
+
+.countin-mode-btn {
+  padding: 5px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: 8px;
   cursor: pointer;
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   user-select: none;
-  align-self: center;
   white-space: nowrap;
 }
 
-.countin-toggle-btn:hover {
+.countin-mode-btn:hover {
   color: var(--color-text-primary);
   background: rgba(255, 255, 255, 0.05);
 }
 
-.countin-toggle-btn.active {
+.countin-mode-btn.active {
   background: var(--color-accent-cyan);
   color: var(--color-bg-primary);
-  border-color: var(--color-accent-cyan);
-  box-shadow: 0 2px 8px var(--color-accent-cyan-dim);
+  box-shadow: 0 2px 6px var(--color-accent-cyan-dim);
 }
 
 .app-top {
@@ -1499,7 +1507,7 @@ input[type="number"] {
 }
 
 .repeat-modal-section-title {
-  font-size: 12px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--color-accent-purple);
   text-transform: uppercase;
@@ -1519,7 +1527,7 @@ input[type="number"] {
 }
 
 .repeat-modal-field-label {
-  font-size: 10px;
+  font-size: 14px;
   font-weight: 500;
   color: var(--color-text-muted);
   text-transform: uppercase;
@@ -1549,7 +1557,7 @@ input[type="number"] {
 }
 
 .repeat-modal-preview {
-  font-size: 11px;
+  font-size: 14px;
   color: var(--color-text-muted);
   padding: 6px 10px;
   background: rgba(168, 85, 247, 0.06);
@@ -1711,9 +1719,9 @@ input[type="number"] {
     font-size: 10px;
   }
 
-  .countin-toggle-btn {
-    padding: 4px 8px;
-    font-size: 10px;
+  .countin-mode-btn {
+    padding: 3px 6px;
+    font-size: 9px;
   }
 
   .song-loader {

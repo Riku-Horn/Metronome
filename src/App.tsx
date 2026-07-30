@@ -183,12 +183,22 @@ function App() {
   }, [metronome, sync, getSyncManager]);
 
   const handleCountInToggle = useCallback((enabled: boolean) => {
-    if (sync.isMember) return; // Members cannot toggle count-in
-
+    if (sync.isMember) return;
     metronome.setCountInEnabled(enabled);
-
     if (sync.isLeader) {
       getSyncManager()?.broadcast({ type: 'settings', countInEnabled: enabled });
+    }
+  }, [metronome, sync, getSyncManager]);
+
+  const handleCountInModeChange = useCallback((mode: 'auto' | '3' | '4') => {
+    if (sync.isMember) return;
+    metronome.setCountInMode(mode);
+    // Also ensure count-in is enabled when a mode is selected
+    if (!metronome.countInEnabled) {
+      metronome.setCountInEnabled(true);
+      if (sync.isLeader) {
+        getSyncManager()?.broadcast({ type: 'settings', countInEnabled: true });
+      }
     }
   }, [metronome, sync, getSyncManager]);
 
@@ -207,8 +217,8 @@ function App() {
         onClose={() => setShowRepeatModal(false)}
         song={song}
         currentRepeat={metronome.repeatConfig}
-        onSetRepeat={(startIndex, endIndex, countInMeasures) => {
-          metronome.setRepeatRange(startIndex, endIndex, countInMeasures);
+        onSetRepeat={(startIndex, endIndex, countInMeasures, countInMode) => {
+          metronome.setRepeatRange(startIndex, endIndex, countInMeasures, countInMode);
           handleJumpTo(startIndex);
         }}
         onClearRepeat={metronome.clearRepeatRange}
@@ -269,15 +279,40 @@ function App() {
                 16分
               </button>
             </div>
-            <button
-              className={`countin-toggle-btn ${metronome.countInEnabled ? 'active' : ''}`}
-              onClick={() => handleCountInToggle(!metronome.countInEnabled)}
-              disabled={sync.isMember}
-              id="countin-toggle-button"
-              aria-label={metronome.countInEnabled ? 'カウントをOFFにする' : 'カウントをONにする'}
-            >
-              カウント{metronome.countInEnabled ? 'ON' : 'OFF'}
-            </button>
+            <div className="countin-mode-selector" id="countin-mode-selector">
+              <button
+                className={`countin-mode-btn ${!metronome.countInEnabled ? 'active' : ''}`}
+                onClick={() => handleCountInToggle(false)}
+                disabled={sync.isMember}
+                id="countin-off-button"
+              >
+                カウントなし
+              </button>
+              <button
+                className={`countin-mode-btn ${metronome.countInEnabled && metronome.countInMode === 'auto' ? 'active' : ''}`}
+                onClick={() => handleCountInModeChange('auto')}
+                disabled={sync.isMember}
+                id="countin-auto-button"
+              >
+                開始小節と同じ
+              </button>
+              <button
+                className={`countin-mode-btn ${metronome.countInEnabled && metronome.countInMode === '4' ? 'active' : ''}`}
+                onClick={() => handleCountInModeChange('4')}
+                disabled={sync.isMember}
+                id="countin-4-button"
+              >
+                4拍
+              </button>
+              <button
+                className={`countin-mode-btn ${metronome.countInEnabled && metronome.countInMode === '3' ? 'active' : ''}`}
+                onClick={() => handleCountInModeChange('3')}
+                disabled={sync.isMember}
+                id="countin-3-button"
+              >
+                3拍
+              </button>
+            </div>
             <SongLoader
               onSongLoaded={handleSongLoaded}
               currentSongTitle={song?.title || null}

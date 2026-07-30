@@ -48,6 +48,7 @@ export class AudioEngine {
 
   // Count-in state
   private countInEnabled = true;
+  private countInMode: 'auto' | '3' | '4' = 'auto';
   private isCountIn = false;
   private countInBeatsRemaining = 0;
   private countInBeatNumber = 0;       // raw 1-based pattern beat counter
@@ -61,6 +62,7 @@ export class AudioEngine {
   private repeatStartIndex = 0;
   private repeatEndIndex = 0;
   private repeatCountInMeasures: 0 | 1 | 2 = 0;
+  private repeatCountInMode: 'auto' | '3' | '4' = 'auto';
 
   // Song data
   private measures: MeasureData[] = [];
@@ -161,6 +163,43 @@ export class AudioEngine {
 
   getCountInEnabled(): boolean {
     return this.countInEnabled;
+  }
+
+  setCountInMode(mode: 'auto' | '3' | '4'): void {
+    this.countInMode = mode;
+  }
+
+  getCountInMode(): 'auto' | '3' | '4' {
+    return this.countInMode;
+  }
+
+  /**
+   * Build count-in pattern and display interval for a given mode.
+   * 'auto' = match the measure, '3' = 3/4 style, '4' = 4/4 style.
+   */
+  private buildCountInConfig(
+    mode: 'auto' | '3' | '4',
+    measure: MeasureData
+  ): { pattern: ('A' | 'B')[]; displayInterval: number } {
+    if (mode === '4') {
+      // 4/4 style: 8 eighth notes (ABABABAB), display every 2
+      return {
+        pattern: ['A', 'B', 'A', 'B', 'A', 'B', 'A', 'B'],
+        displayInterval: 2,
+      };
+    }
+    if (mode === '3') {
+      // 3/4 style: 6 eighth notes (ABABAB), display every 2
+      return {
+        pattern: ['A', 'B', 'A', 'B', 'A', 'B'],
+        displayInterval: 2,
+      };
+    }
+    // 'auto': match the measure
+    return {
+      pattern: getBeatPattern(measure),
+      displayInterval: measure.denominator === 4 ? 2 : 1,
+    };
   }
 
   /**
@@ -277,8 +316,14 @@ export class AudioEngine {
    * Set the repeat range. When enabled, playback will loop
    * between startIndex and endIndex (both inclusive).
    * @param countInMeasures 0 = no count-in, 1 = 1 measure, 2 = 2 measures
+   * @param countInMode 'auto' = match measure, '3' = 3-beat, '4' = 4-beat
    */
-  setRepeatRange(startIndex: number, endIndex: number, countInMeasures: 0 | 1 | 2): void {
+  setRepeatRange(
+    startIndex: number,
+    endIndex: number,
+    countInMeasures: 0 | 1 | 2,
+    countInMode: 'auto' | '3' | '4' = 'auto'
+  ): void {
     if (startIndex < 0 || endIndex < 0) return;
     if (startIndex >= this.measures.length || endIndex >= this.measures.length) return;
     if (startIndex > endIndex) return;
@@ -286,6 +331,7 @@ export class AudioEngine {
     this.repeatStartIndex = startIndex;
     this.repeatEndIndex = endIndex;
     this.repeatCountInMeasures = countInMeasures;
+    this.repeatCountInMode = countInMode;
   }
 
   /**
@@ -296,6 +342,7 @@ export class AudioEngine {
     this.repeatStartIndex = 0;
     this.repeatEndIndex = 0;
     this.repeatCountInMeasures = 0;
+    this.repeatCountInMode = 'auto';
   }
 
   /**
@@ -329,6 +376,7 @@ export class AudioEngine {
 
     this.isPlaying = true;
     this.nextNoteTime = this.audioContext.currentTime;
+    this.currentBeatIndex = 0;  // Always start from the beginning of the measure
     this.updateCurrentPattern();
     this.pendingBeats = [];
     this.pendingMeasureChanges = [];
@@ -336,17 +384,28 @@ export class AudioEngine {
     this.pendingCountInEnd = [];
     this.subStep = 0;
 
-    // Set up count-in: play 1 measure of the opening pattern
-    if (this.countInEnabled && this.measures.length > 0) {
+    // Set up count-in:
+    // When repeat is enabled, repeat count-in settings take precedence over global count-in settings
+    const activeCountInEnabled = this.repeatEnabled
+      ? this.repeatCountInMeasures > 0
+      : this.countInEnabled;
+    const activeCountInMode = this.repeatEnabled
+      ? this.repeatCountInMode
+      : this.countInMode;
+    const activeCountInMeasures = this.repeatEnabled
+      ? this.repeatCountInMeasures
+      : 1;
+
+    if (activeCountInEnabled && this.measures.length > 0) {
       const openingMeasure = this.measures[this.currentMeasureIndex];
-      this.countInPattern = getBeatPattern(openingMeasure);
+      const config = this.buildCountInConfig(activeCountInMode, openingMeasure);
+      this.countInPattern = config.pattern;
       const beatsPerMeasure = this.countInPattern.length;
-      this.countInBeatsRemaining = beatsPerMeasure; // 1 measure of count-in
+      this.countInBeatsRemaining = beatsPerMeasure * activeCountInMeasures;
       this.countInBeatNumber = 0;
       this.countInBeatIndex = 0;
       this.countInSubStep = 0;
-      // For x/4 time, display count per quarter note (every 2 eighth notes)
-      this.countInDisplayInterval = openingMeasure.denominator === 4 ? 2 : 1;
+      this.countInDisplayInterval = config.displayInterval;
       this.isCountIn = true;
     } else {
       this.isCountIn = false;
@@ -696,13 +755,14 @@ export class AudioEngine {
           // If repeat count-in is configured (1 or 2 measures), start a count-in phase before resuming
           if (this.repeatCountInMeasures > 0 && this.measures.length > 0) {
             const openingMeasure = this.measures[this.currentMeasureIndex];
-            this.countInPattern = getBeatPattern(openingMeasure);
+            const config = this.buildCountInConfig(this.repeatCountInMode, openingMeasure);
+            this.countInPattern = config.pattern;
             const beatsPerMeasure = this.countInPattern.length;
             this.countInBeatsRemaining = beatsPerMeasure * this.repeatCountInMeasures;
             this.countInBeatNumber = 0;
             this.countInBeatIndex = 0;
             this.countInSubStep = 0;
-            this.countInDisplayInterval = openingMeasure.denominator === 4 ? 2 : 1;
+            this.countInDisplayInterval = config.displayInterval;
             this.isCountIn = true;
           }
         } else if (this.currentMeasureIndex >= this.measures.length) {
