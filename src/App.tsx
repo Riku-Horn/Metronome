@@ -10,6 +10,7 @@ import { PositionSelector } from './components/PositionSelector';
 import { SongLoader } from './components/SongLoader';
 import { SyncPanel } from './components/SyncPanel';
 import { HelpPage } from './components/HelpPage';
+import { RepeatSettingsModal } from './components/RepeatSettingsModal';
 import { sampleSong } from './data/sampleSong';
 import { loadSongFromStorage, saveSongToStorage } from './utils/songParser';
 import type { SongData } from './types/song';
@@ -21,6 +22,7 @@ function App() {
   });
   const [showOverlay, setShowOverlay] = useState(true);
   const [showHelp, setShowHelp] = useState(false);
+  const [showRepeatModal, setShowRepeatModal] = useState(false);
 
   // ─── Sync Session ──────────────────────────────────
   const sync = useSyncSession({
@@ -200,6 +202,14 @@ function App() {
     <>
       {showOverlay && <AudioStartOverlay onStart={handleInitialize} />}
       {showHelp && <HelpPage onClose={() => setShowHelp(false)} />}
+      <RepeatSettingsModal
+        isOpen={showRepeatModal}
+        onClose={() => setShowRepeatModal(false)}
+        song={song}
+        currentRepeat={metronome.repeatConfig}
+        onSetRepeat={metronome.setRepeatRange}
+        onClearRepeat={metronome.clearRepeatRange}
+      />
 
       <div className="app-container" id="app-container">
         {/* Header with song loader */}
@@ -313,12 +323,34 @@ function App() {
         {/* Bottom: Controls */}
         <div className={`app-bottom ${sync.isMember ? 'member-disabled-controls' : ''}`}>
           <div className="app-controls-row">
-            {/* Left: Position Selector */}
-            <PositionSelector
-              song={song}
-              currentMeasureIndex={metronome.position.measureIndex}
-              onJumpTo={handleJumpTo}
-            />
+            {/* Left: Position Selector + Repeat */}
+            <div className="position-repeat-group">
+              <PositionSelector
+                song={song}
+                currentMeasureIndex={metronome.position.measureIndex}
+                onJumpTo={handleJumpTo}
+              />
+              <div className="repeat-control">
+                <button
+                  className={`repeat-btn ${metronome.repeatConfig ? 'repeat-btn-active' : ''}`}
+                  onClick={() => setShowRepeatModal(true)}
+                  id="repeat-button"
+                  aria-label="リピート設定"
+                  disabled={sync.isMember}
+                >
+                  🔁 リピート{metronome.repeatConfig ? 'ON' : ''}
+                </button>
+                {metronome.repeatConfig && song && (
+                  <div className="repeat-indicator">
+                    {song.measures[metronome.repeatConfig.startIndex]?.section}
+                    {song.measures[metronome.repeatConfig.startIndex]?.sectionMeasure ?? ''}
+                    {'→'}
+                    {song.measures[metronome.repeatConfig.endIndex]?.section}
+                    {song.measures[metronome.repeatConfig.endIndex]?.sectionMeasure ?? ''}
+                  </div>
+                )}
+              </div>
+            </div>
 
             {/* Center: Transport */}
             <TransportControls

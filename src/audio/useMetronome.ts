@@ -3,6 +3,12 @@ import { AudioEngine } from './AudioEngine';
 import { computeSectionMeasures } from '../utils/songParser';
 import type { SongData, BeatEvent, PlaybackPosition } from '../types/song';
 
+export interface RepeatConfig {
+  startIndex: number;
+  endIndex: number;
+  countInEnabled: boolean;
+}
+
 interface UseMetronomeReturn {
   /** Whether the metronome is currently playing */
   isPlaying: boolean;
@@ -61,6 +67,14 @@ interface UseMetronomeReturn {
   setLatencyOffsetMs: (offsetMs: number) => void;
   /** Direct reference to the AudioEngine (for sync layer) */
   engineRef: React.RefObject<AudioEngine | null>;
+  /** Current repeat configuration (null if disabled) */
+  repeatConfig: RepeatConfig | null;
+  /** Set repeat range */
+  setRepeatRange: (startIndex: number, endIndex: number, countInEnabled: boolean) => void;
+  /** Clear repeat range */
+  clearRepeatRange: () => void;
+  /** Current loaded song reference */
+  song: SongData | null;
 }
 
 export function useMetronome(initialBpm = 120): UseMetronomeReturn {
@@ -83,6 +97,7 @@ export function useMetronome(initialBpm = 120): UseMetronomeReturn {
   const [isCountIn, setIsCountIn] = useState(false);
   const [countInBeat, setCountInBeat] = useState(0);
   const [countInTotal, setCountInTotal] = useState(0);
+  const [repeatConfig, setRepeatConfig] = useState<RepeatConfig | null>(null);
 
   // Create engine on mount
   useEffect(() => {
@@ -285,6 +300,20 @@ export function useMetronome(initialBpm = 120): UseMetronomeReturn {
     }
   }, []);
 
+  const setRepeatRange = useCallback((startIndex: number, endIndex: number, countInEnabled: boolean) => {
+    setRepeatConfig({ startIndex, endIndex, countInEnabled });
+    if (engineRef.current) {
+      engineRef.current.setRepeatRange(startIndex, endIndex, countInEnabled);
+    }
+  }, []);
+
+  const clearRepeatRange = useCallback(() => {
+    setRepeatConfig(null);
+    if (engineRef.current) {
+      engineRef.current.clearRepeatRange();
+    }
+  }, []);
+
   return {
     isPlaying,
     bpm,
@@ -314,5 +343,9 @@ export function useMetronome(initialBpm = 120): UseMetronomeReturn {
     latencyOffsetMs,
     setLatencyOffsetMs,
     engineRef,
+    repeatConfig,
+    setRepeatRange,
+    clearRepeatRange,
+    song: songRef.current,
   };
 }

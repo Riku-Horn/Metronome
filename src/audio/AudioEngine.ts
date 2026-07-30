@@ -56,6 +56,12 @@ export class AudioEngine {
   private countInSubStep = 0;
   private countInDisplayInterval = 1;  // 1 for x/8, 2 for x/4 (quarter-note grouping)
 
+  // Repeat range state
+  private repeatEnabled = false;
+  private repeatStartIndex = 0;
+  private repeatEndIndex = 0;
+  private repeatCountInEnabled = false;
+
   // Song data
   private measures: MeasureData[] = [];
   private currentPattern: ('A' | 'B')[] = [];
@@ -265,6 +271,37 @@ export class AudioEngine {
       // Schedule the jump beat immediately
       this.scheduler();
     }
+  }
+
+  /**
+   * Set the repeat range. When enabled, playback will loop
+   * between startIndex and endIndex (both inclusive).
+   */
+  setRepeatRange(startIndex: number, endIndex: number, countInEnabled: boolean): void {
+    if (startIndex < 0 || endIndex < 0) return;
+    if (startIndex >= this.measures.length || endIndex >= this.measures.length) return;
+    if (startIndex > endIndex) return;
+    this.repeatEnabled = true;
+    this.repeatStartIndex = startIndex;
+    this.repeatEndIndex = endIndex;
+    this.repeatCountInEnabled = countInEnabled;
+  }
+
+  /**
+   * Clear the repeat range, returning to normal playback.
+   */
+  clearRepeatRange(): void {
+    this.repeatEnabled = false;
+    this.repeatStartIndex = 0;
+    this.repeatEndIndex = 0;
+    this.repeatCountInEnabled = false;
+  }
+
+  /**
+   * Check if repeat is enabled.
+   */
+  getRepeatEnabled(): boolean {
+    return this.repeatEnabled;
   }
 
   /**
@@ -651,8 +688,31 @@ export class AudioEngine {
         this.currentBeatIndex = 0;
         this.currentMeasureIndex++;
 
-        // Loop back to the beginning if we've gone past all measures
-        if (this.currentMeasureIndex >= this.measures.length) {
+        // Repeat range check: if we've gone past the repeat end, loop back
+        if (this.repeatEnabled && this.currentMeasureIndex > this.repeatEndIndex) {
+          this.currentMeasureIndex = this.repeatStartIndex;
+
+          // If repeat count-in is enabled, start a count-in phase before resuming
+          if (this.repeatCountInEnabled && this.measures.length > 0) {
+            const openingMeasure = this.measures[this.currentMeasureIndex];
+            this.countInPattern = getBeatPattern(openingMeasure);
+            const beatsPerMeasure = this.countInPattern.length;
+            this.countInBeatsRemaining = beatsPerMeasure;
+            this.countInBeatNumber = 0;
+            this.countInBeatIndex = 0;
+            this.countInSubStep = 0;
+            this.countInDisplayInterval = openingMeasure.denominator === 4 ? 2 : 1;
+            this.isCountIn = true;
+
+            // Notify UI about count-in start
+            this.pendingCountInBeats.push({
+              time: this.nextNoteTime,
+              beatNumber: 1,
+              totalBeats: Math.ceil(beatsPerMeasure / this.countInDisplayInterval),
+            });
+          }
+        } else if (this.currentMeasureIndex >= this.measures.length) {
+          // Loop back to the beginning if we've gone past all measures
           this.currentMeasureIndex = 0;
         }
 
