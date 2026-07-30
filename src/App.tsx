@@ -283,32 +283,36 @@ function App() {
               <button
                 className={`countin-mode-btn ${!metronome.countInEnabled ? 'active' : ''}`}
                 onClick={() => handleCountInToggle(false)}
-                disabled={sync.isMember}
+                disabled={sync.isMember || !!metronome.repeatConfig}
                 id="countin-off-button"
+                title={metronome.repeatConfig ? 'リピート設定有効時はリピート設定が優先されます' : undefined}
               >
                 カウントなし
               </button>
               <button
                 className={`countin-mode-btn ${metronome.countInEnabled && metronome.countInMode === 'auto' ? 'active' : ''}`}
                 onClick={() => handleCountInModeChange('auto')}
-                disabled={sync.isMember}
+                disabled={sync.isMember || !!metronome.repeatConfig}
                 id="countin-auto-button"
+                title={metronome.repeatConfig ? 'リピート設定有効時はリピート設定が優先されます' : undefined}
               >
                 開始小節と同じ
               </button>
               <button
                 className={`countin-mode-btn ${metronome.countInEnabled && metronome.countInMode === '4' ? 'active' : ''}`}
                 onClick={() => handleCountInModeChange('4')}
-                disabled={sync.isMember}
+                disabled={sync.isMember || !!metronome.repeatConfig}
                 id="countin-4-button"
+                title={metronome.repeatConfig ? 'リピート設定有効時はリピート設定が優先されます' : undefined}
               >
                 4拍
               </button>
               <button
                 className={`countin-mode-btn ${metronome.countInEnabled && metronome.countInMode === '3' ? 'active' : ''}`}
                 onClick={() => handleCountInModeChange('3')}
-                disabled={sync.isMember}
+                disabled={sync.isMember || !!metronome.repeatConfig}
                 id="countin-3-button"
+                title={metronome.repeatConfig ? 'リピート設定有効時はリピート設定が優先されます' : undefined}
               >
                 3拍
               </button>
