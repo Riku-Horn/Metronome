@@ -207,7 +207,10 @@ function App() {
         onClose={() => setShowRepeatModal(false)}
         song={song}
         currentRepeat={metronome.repeatConfig}
-        onSetRepeat={metronome.setRepeatRange}
+        onSetRepeat={(startIndex, endIndex, countInMeasures) => {
+          metronome.setRepeatRange(startIndex, endIndex, countInMeasures);
+          handleJumpTo(startIndex);
+        }}
         onClearRepeat={metronome.clearRepeatRange}
       />
 

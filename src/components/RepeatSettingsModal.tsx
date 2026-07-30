@@ -6,8 +6,8 @@ interface RepeatSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
   song: SongData | null;
-  currentRepeat: { startIndex: number; endIndex: number; countInEnabled: boolean } | null;
-  onSetRepeat: (startIndex: number, endIndex: number, countInEnabled: boolean) => void;
+  currentRepeat: { startIndex: number; endIndex: number; countInMeasures: 0 | 1 | 2 } | null;
+  onSetRepeat: (startIndex: number, endIndex: number, countInMeasures: 0 | 1 | 2) => void;
   onClearRepeat: () => void;
 }
 
@@ -24,7 +24,7 @@ export function RepeatSettingsModal({
   const [startMeasureIdx, setStartMeasureIdx] = useState(0);
   const [endSection, setEndSection] = useState('');
   const [endMeasureIdx, setEndMeasureIdx] = useState(0);
-  const [countInEnabled, setCountInEnabled] = useState(false);
+  const [countInMeasures, setCountInMeasures] = useState<0 | 1 | 2>(0);
   const [isInitialized, setIsInitialized] = useState(false);
 
   const sections = useMemo(() => {
@@ -43,7 +43,7 @@ export function RepeatSettingsModal({
         setStartMeasureIdx(currentRepeat.startIndex);
         setEndSection(endMeasure.section);
         setEndMeasureIdx(currentRepeat.endIndex);
-        setCountInEnabled(currentRepeat.countInEnabled);
+        setCountInMeasures(currentRepeat.countInMeasures ?? 0);
       }
     } else {
       // Default: first section, first measure
@@ -57,7 +57,7 @@ export function RepeatSettingsModal({
       const lastIdx = song.measures.indexOf(lastMeasure);
       setEndSection(firstSection);
       setEndMeasureIdx(lastIdx >= 0 ? lastIdx : firstIdx);
-      setCountInEnabled(false);
+      setCountInMeasures(0);
     }
     setIsInitialized(true);
   }
@@ -108,7 +108,7 @@ export function RepeatSettingsModal({
 
   const handleApply = () => {
     if (!isValid) return;
-    onSetRepeat(startMeasureIdx, endMeasureIdx, countInEnabled);
+    onSetRepeat(startMeasureIdx, endMeasureIdx, countInMeasures);
     onClose();
   };
 
@@ -235,23 +235,38 @@ export function RepeatSettingsModal({
             </div>
           )}
 
-          {/* Count-in toggle */}
+          {/* Count-in selection */}
           <div className="repeat-modal-section">
-            <div className="repeat-modal-countin-row">
+            <div className="repeat-modal-countin-block">
               <div className="repeat-modal-countin-info">
                 <h3 className="repeat-modal-section-title">戻る際のカウント</h3>
                 <p className="repeat-modal-countin-desc">
-                  リピート開始地点に戻る際に1小節分のカウントインを行います
+                  リピート開始地点に戻る際のカウントインの長さを指定します
                 </p>
               </div>
-              <button
-                className={`repeat-modal-toggle ${countInEnabled ? 'repeat-modal-toggle-on' : ''}`}
-                onClick={() => setCountInEnabled(!countInEnabled)}
-                id="repeat-countin-toggle"
-                aria-label={countInEnabled ? 'カウントをOFFにする' : 'カウントをONにする'}
-              >
-                <span className="repeat-modal-toggle-knob" />
-              </button>
+              <div className="repeat-modal-countin-options">
+                <button
+                  type="button"
+                  className={`repeat-modal-countin-opt ${countInMeasures === 0 ? 'active' : ''}`}
+                  onClick={() => setCountInMeasures(0)}
+                >
+                  なし
+                </button>
+                <button
+                  type="button"
+                  className={`repeat-modal-countin-opt ${countInMeasures === 1 ? 'active' : ''}`}
+                  onClick={() => setCountInMeasures(1)}
+                >
+                  1小節
+                </button>
+                <button
+                  type="button"
+                  className={`repeat-modal-countin-opt ${countInMeasures === 2 ? 'active' : ''}`}
+                  onClick={() => setCountInMeasures(2)}
+                >
+                  2小節
+                </button>
+              </div>
             </div>
           </div>
         </div>

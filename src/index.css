@@ -1567,19 +1567,17 @@ input[type="number"] {
   border: 1px solid rgba(239, 68, 68, 0.2);
 }
 
-/* Count-in toggle row */
-.repeat-modal-countin-row {
+/* Count-in block */
+.repeat-modal-countin-block {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .repeat-modal-countin-info {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  flex: 1;
 }
 
 .repeat-modal-countin-desc {
@@ -1588,41 +1586,39 @@ input[type="number"] {
   line-height: 1.4;
 }
 
-/* Toggle switch */
-.repeat-modal-toggle {
-  width: 44px;
-  height: 24px;
-  border-radius: 12px;
-  border: none;
+.repeat-modal-countin-options {
+  display: flex;
   background: var(--color-bg-tertiary);
   border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 3px;
+  gap: 3px;
+}
+
+.repeat-modal-countin-opt {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  background: transparent;
+  border: none;
+  border-radius: 7px;
   cursor: pointer;
-  position: relative;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  flex-shrink: 0;
-  padding: 0;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  user-select: none;
+  text-align: center;
 }
 
-.repeat-modal-toggle-on {
+.repeat-modal-countin-opt:hover {
+  color: var(--color-text-primary);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.repeat-modal-countin-opt.active {
   background: var(--color-accent-purple);
-  border-color: var(--color-accent-purple);
-}
-
-.repeat-modal-toggle-knob {
-  display: block;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: var(--color-text-secondary);
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.repeat-modal-toggle-on .repeat-modal-toggle-knob {
-  transform: translateX(20px);
-  background: #fff;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(168, 85, 247, 0.3);
 }
 
 /* Action buttons */

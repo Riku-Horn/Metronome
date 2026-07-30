@@ -60,7 +60,7 @@ export class AudioEngine {
   private repeatEnabled = false;
   private repeatStartIndex = 0;
   private repeatEndIndex = 0;
-  private repeatCountInEnabled = false;
+  private repeatCountInMeasures: 0 | 1 | 2 = 0;
 
   // Song data
   private measures: MeasureData[] = [];
@@ -276,15 +276,16 @@ export class AudioEngine {
   /**
    * Set the repeat range. When enabled, playback will loop
    * between startIndex and endIndex (both inclusive).
+   * @param countInMeasures 0 = no count-in, 1 = 1 measure, 2 = 2 measures
    */
-  setRepeatRange(startIndex: number, endIndex: number, countInEnabled: boolean): void {
+  setRepeatRange(startIndex: number, endIndex: number, countInMeasures: 0 | 1 | 2): void {
     if (startIndex < 0 || endIndex < 0) return;
     if (startIndex >= this.measures.length || endIndex >= this.measures.length) return;
     if (startIndex > endIndex) return;
     this.repeatEnabled = true;
     this.repeatStartIndex = startIndex;
     this.repeatEndIndex = endIndex;
-    this.repeatCountInEnabled = countInEnabled;
+    this.repeatCountInMeasures = countInMeasures;
   }
 
   /**
@@ -294,7 +295,7 @@ export class AudioEngine {
     this.repeatEnabled = false;
     this.repeatStartIndex = 0;
     this.repeatEndIndex = 0;
-    this.repeatCountInEnabled = false;
+    this.repeatCountInMeasures = 0;
   }
 
   /**
@@ -692,24 +693,17 @@ export class AudioEngine {
         if (this.repeatEnabled && this.currentMeasureIndex > this.repeatEndIndex) {
           this.currentMeasureIndex = this.repeatStartIndex;
 
-          // If repeat count-in is enabled, start a count-in phase before resuming
-          if (this.repeatCountInEnabled && this.measures.length > 0) {
+          // If repeat count-in is configured (1 or 2 measures), start a count-in phase before resuming
+          if (this.repeatCountInMeasures > 0 && this.measures.length > 0) {
             const openingMeasure = this.measures[this.currentMeasureIndex];
             this.countInPattern = getBeatPattern(openingMeasure);
             const beatsPerMeasure = this.countInPattern.length;
-            this.countInBeatsRemaining = beatsPerMeasure;
+            this.countInBeatsRemaining = beatsPerMeasure * this.repeatCountInMeasures;
             this.countInBeatNumber = 0;
             this.countInBeatIndex = 0;
             this.countInSubStep = 0;
             this.countInDisplayInterval = openingMeasure.denominator === 4 ? 2 : 1;
             this.isCountIn = true;
-
-            // Notify UI about count-in start
-            this.pendingCountInBeats.push({
-              time: this.nextNoteTime,
-              beatNumber: 1,
-              totalBeats: Math.ceil(beatsPerMeasure / this.countInDisplayInterval),
-            });
           }
         } else if (this.currentMeasureIndex >= this.measures.length) {
           // Loop back to the beginning if we've gone past all measures

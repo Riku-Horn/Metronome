@@ -6,7 +6,7 @@ import type { SongData, BeatEvent, PlaybackPosition } from '../types/song';
 export interface RepeatConfig {
   startIndex: number;
   endIndex: number;
-  countInEnabled: boolean;
+  countInMeasures: 0 | 1 | 2;
 }
 
 interface UseMetronomeReturn {
@@ -70,7 +70,7 @@ interface UseMetronomeReturn {
   /** Current repeat configuration (null if disabled) */
   repeatConfig: RepeatConfig | null;
   /** Set repeat range */
-  setRepeatRange: (startIndex: number, endIndex: number, countInEnabled: boolean) => void;
+  setRepeatRange: (startIndex: number, endIndex: number, countInMeasures: 0 | 1 | 2) => void;
   /** Clear repeat range */
   clearRepeatRange: () => void;
   /** Current loaded song reference */
@@ -300,10 +300,10 @@ export function useMetronome(initialBpm = 120): UseMetronomeReturn {
     }
   }, []);
 
-  const setRepeatRange = useCallback((startIndex: number, endIndex: number, countInEnabled: boolean) => {
-    setRepeatConfig({ startIndex, endIndex, countInEnabled });
+  const setRepeatRange = useCallback((startIndex: number, endIndex: number, countInMeasures: 0 | 1 | 2) => {
+    setRepeatConfig({ startIndex, endIndex, countInMeasures });
     if (engineRef.current) {
-      engineRef.current.setRepeatRange(startIndex, endIndex, countInEnabled);
+      engineRef.current.setRepeatRange(startIndex, endIndex, countInMeasures);
     }
   }, []);
 
